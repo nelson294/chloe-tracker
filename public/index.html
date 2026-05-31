@@ -48,19 +48,20 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; m
 .stat-card { background: #fff; border-radius: 14px; padding: 14px; border: 0.5px solid rgba(0,0,0,0.07); }
 .stat-val { font-size: 17px; font-weight: 500; color: #1a1a1a; margin-top: 4px; }
 .stat-sub { font-size: 10px; color: #aaa; margin-top: 2px; }
-.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
-.cal-hdr { text-align: center; font-size: 9px; color: #aaa; padding: 3px 0; font-weight: 500; }
-.cday { border-radius: 5px; padding: 3px; min-height: 54px; font-size: 9px; border: 0.5px solid rgba(0,0,0,0.07); }
-.cday.empty { border-color: transparent; background: transparent; }
-.cday.c-fly { background: #E6F1FB; border-color: #B5D4F4; }
-.cday.c-off { background: #f8f8f5; }
-.cday.c-sby { background: #EEEDFE; border-color: #CECBF6; }
-.cday.c-lay { background: #FAEEDA; border-color: #FAC775; }
-.cday .dn { font-size: 9px; font-weight: 500; color: #888; }
-.cday .dt { font-size: 8px; color: #aaa; line-height: 1.3; margin-top: 1px; }
-.c-fly .dn, .c-fly .dt { color: #0C447C; }
-.c-sby .dn, .c-sby .dt { color: #3C3489; }
-.c-lay .dn, .c-lay .dt { color: #633806; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.cal-hdr { text-align: center; font-size: 9px; color: #888; padding: 4px 0 3px; font-weight: 600; }
+.cday { border-radius: 6px; padding: 4px; min-height: 56px; font-size: 9px; border: 1px solid transparent; }
+.cday.empty { background: transparent; }
+.cday.c-fly { background: #c8e2fa; border-color: #85B7EB; }
+.cday.c-off { background: #d8d8d5; border-color: #b8b8b4; }
+.cday.c-sby { background: #d4d0f5; border-color: #AFA9EC; }
+.cday.c-lay { background: #f5dfa8; border-color: #EF9F27; }
+.cday .dn { font-size: 9px; font-weight: 600; color: #444; }
+.cday .dt { font-size: 8px; line-height: 1.3; margin-top: 2px; }
+.c-fly .dn { color: #042C53; } .c-fly .dt { color: #0C447C; }
+.c-sby .dn { color: #26215C; } .c-sby .dt { color: #3C3489; }
+.c-lay .dn { color: #412402; } .c-lay .dt { color: #633806; }
+.c-off .dn { color: #333; } .c-off .dt { color: #555; }
 .legend-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; position: relative; z-index: 1; }
 .leg { display: flex; align-items: center; gap: 4px; font-size: 10px; color: #aaa; }
 .legdot { width: 7px; height: 7px; border-radius: 2px; }
@@ -91,10 +92,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; m
 
 <div class="sec">June 2026</div>
 <div class="legend-row">
-  <div class="leg"><div class="legdot" style="background:#E6F1FB;border:1px solid #B5D4F4;"></div>Flying</div>
-  <div class="leg"><div class="legdot" style="background:#FAEEDA;border:1px solid #FAC775;"></div>Layover</div>
-  <div class="leg"><div class="legdot" style="background:#EEEDFE;border:1px solid #CECBF6;"></div>Standby</div>
-  <div class="leg"><div class="legdot" style="background:#f8f8f5;border:0.5px solid rgba(0,0,0,0.08);"></div>Off</div>
+  <div class="leg"><div class="legdot" style="background:#c8e2fa;border:1px solid #85B7EB;"></div>Flying</div>
+  <div class="leg"><div class="legdot" style="background:#f5dfa8;border:1px solid #EF9F27;"></div>Layover</div>
+  <div class="leg"><div class="legdot" style="background:#d4d0f5;border:1px solid #AFA9EC;"></div>Standby</div>
+  <div class="leg"><div class="legdot" style="background:#d8d8d5;border:1px solid #b8b8b4;"></div>Off</div>
 </div>
 <div class="card" style="padding:10px 8px;position:relative;z-index:1;">
   <div class="cal-grid" id="cal"></div>
