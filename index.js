@@ -120,7 +120,8 @@ app.get('/status', async (req, res) => {
   }
 });
 
-app.get('/', (req, res) => res.send('Chloe tracker API is running.'));
+app.use(express.static('public'));
+app.get('/health', (req, res) => res.send('Chloe tracker API is running.'));
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
