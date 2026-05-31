@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Where is Chloe?</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f0; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .container { width: 100%; max-width: 380px; }
+  .card { background: #fff; border-radius: 16px; padding: 20px; margin-bottom: 12px; border: 1px solid rgba(0,0,0,0.08); }
+  .label { font-size: 12px; color: #888; margin-bottom: 2px; }
+  .value { font-size: 15px; font-weight: 500; color: #1a1a1a; }
+  .value.big { font-size: 22px; }
+  .badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 20px; margin: 6px 0 10px; }
+  .fly { background: #E6F1FB; color: #0C447C; }
+  .off { background: #f0f0ed; color: #666; }
+  .standby { background: #EEEDFE; color: #3C3489; }
+  .layover { background: #FAEEDA; color: #633806; }
+  .landed { background: #EAF3DE; color: #27500A; }
+  .err { background: #FCEBEB; color: #A32D2D; }
+  .route { display: flex; align-items: center; gap: 10px; margin: 14px 0 8px; }
+  .airport { font-size: 24px; font-weight: 600; color: #1a1a1a; }
+  .line { flex: 1; height: 1px; background: #ddd; position: relative; }
+  .line::after { content: ''; position: absolute; right: -1px; top: -4px; border-left: 7px solid #ddd; border-top: 4px solid transparent; border-bottom: 4px solid transparent; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; background: #378ADD; position: absolute; top: -5px; transition: left 0.3s; }
+  .bar-wrap { background: #f0f0ed; border-radius: 6px; height: 6px; overflow: hidden; margin-bottom: 4px; }
+  .bar { height: 6px; border-radius: 6px; background: #378ADD; }
+  .bar-labels { display: flex; justify-content: space-between; font-size: 11px; color: #888; margin-bottom: 12px; }
+  .metrics { display: flex; gap: 10px; margin-top: 12px; }
+  .metric { flex: 1; background: #f8f8f5; border-radius: 10px; padding: 10px 12px; }
+  .divider { border: none; border-top: 1px solid #f0f0ed; margin: 14px 0; }
+  .footer { font-size: 11px; color: #aaa; display: flex; justify-content: space-between; align-items: center; }
+  .refresh-btn { background: none; border: 1px solid #ddd; border-radius: 8px; padding: 5px 12px; font-size: 12px; color: #555; cursor: pointer; }
+  .refresh-btn:hover { background: #f5f5f0; }
+  .loading { color: #aaa; font-size: 14px; padding: 8px 0; }
+  .header { text-align: center; margin-bottom: 20px; }
+  .header h1 { font-size: 18px; font-weight: 600; color: #1a1a1a; }
+  .header p { font-size: 13px; color: #888; margin-top: 4px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>Where is Chloe?</h1>
+    <p id="date-label"></p>
+  </div>
+  <div id="main"></div>
+</div>
+
+<script>
+const BASE = 'https://chloe-tracker.onrender.com';
+
+function now() { return new Date(); }
+
+function fmt(isoStr) {
+  if (!isoStr) return '—';
+  // Convert to HKT (UTC+8)
+  const hkt = new Date(new Date(isoStr).getTime() + 8 * 60 * 60 * 1000);
+  return hkt.toISOString().slice(11, 16);
+}
+
+function dateLabel() {
+  return now().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+}
+
+function renderFlight(flightNum, f) {
+  const dep = f.departure || {}, arr = f.arrival || {}, live = f.live || {};
+  const status = f.flight_status || 'unknown';
+  const depA = dep.iata || '?', arrA = arr.iata || '?';
+  const depActual = dep.actual ? new Date(dep.actual) : null;
+  const depSched = dep.scheduled ? new Date(dep.scheduled) : null;
+  const arrSched = arr.scheduled ? new Date(arr.scheduled) : null;
+  const arrEst = arr.estimated ? new Date(arr.estimated) : null;
+  const t = now();
+
+  if (status === 'active' || status === 'en-route') {
+    const refDep = depActual || depSched;
+    const refArr = arrEst || arrSched;
+    const totalMs = refDep && refArr ? refArr - refDep : null;
+    const elMs = refDep ? t - refDep : null;
+    let pct = 0, elapsed = '', eta = '';
+
+    if (totalMs && elMs && totalMs > 0) {
+      pct = Math.min(100, Math.round((elMs / totalMs) * 100));
+      const elMins = Math.round(elMs / 60000);
+      const remMins = Math.round((totalMs - elMs) / 60000);
+      elapsed = `${Math.floor(elMins/60)}h ${elMins%60}m airborne`;
+      eta = remMins > 0 ? `${Math.floor(remMins/60)}h ${remMins%60}m to landing` : 'Landing soon';
+    }
+    if (refArr) eta += (eta ? ' · ' : '') + `lands ~${fmt(refArr)}`;
+
+    const alt = live.altitude ? Math.round(live.altitude).toLocaleString() + ' ft' : null;
+    const spd = live.speed_horizontal ? Math.round(live.speed_horizontal) + ' km/h' : null;
+    const aircraft = f.aircraft ? f.aircraft.iata || '' : '';
+
+    return `
+      <div class="card">
+        <p class="label">Flight</p>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span class="value big">${flightNum}</span>
+          <span class="badge fly">In the air</span>
+        </div>
+        ${aircraft ? `<p class="label" style="margin-top:2px;">EVA Air · ${aircraft}</p>` : ''}
+        <div class="route">
+          <span class="airport">${depA}</span>
+          <div class="line"><div class="dot" style="left:calc(${pct}% - 6px)"></div></div>
+          <span class="airport">${arrA}</span>
+        </div>
+        <div class="bar-wrap"><div class="bar" style="width:${pct}%"></div></div>
+        <div class="bar-labels"><span>${elapsed}</span><span>${pct}% complete</span></div>
+        <p class="value" style="font-size:14px;">${eta}</p>
+        ${alt || spd ? `<div class="metrics">
+          ${alt ? `<div class="metric"><p class="label">Altitude</p><p class="value">${alt}</p></div>` : ''}
+          ${spd ? `<div class="metric"><p class="label">Speed</p><p class="value">${spd}</p></div>` : ''}
+        </div>` : ''}
+        <hr class="divider">
+        <div class="footer"><span>Updated ${fmt(t.toISOString())}</span><button class="refresh-btn" onclick="load()">Refresh</button></div>
+      </div>`;
+  }
+
+  if (status === 'landed') {
+    return `<div class="card">
+      <span class="badge landed">Landed</span>
+      <p class="value">${depA} → ${arrA}</p>
+      <p class="label" style="margin-top:6px;">She has landed${arr.actual ? ' at ' + fmt(arr.actual) : ''}. Flight complete.</p>
+      <hr class="divider">
+      <div class="footer"><span>Updated ${fmt(t.toISOString())}</span><button class="refresh-btn" onclick="load()">Refresh</button></div>
+    </div>`;
+  }
+
+  if (status === 'scheduled') {
+    const depTime = depSched ? fmt(depSched.toISOString()) : '—';
+    const minsUntil = depSched ? Math.round((depSched - t) / 60000) : null;
+    const countdown = minsUntil && minsUntil > 0 ? ` · departs in ${Math.floor(minsUntil/60)}h ${minsUntil%60}m` : '';
+    return `<div class="card">
+      <span class="badge standby">Not yet departed</span>
+      <p class="value">${flightNum} · ${depA} → ${arrA}</p>
+      <p class="label" style="margin-top:6px;">Scheduled: ${depTime}${countdown}</p>
+      <hr class="divider">
+      <div class="footer"><span>Updated ${fmt(t.toISOString())}</span><button class="refresh-btn" onclick="load()">Refresh</button></div>
+    </div>`;
+  }
+
+  if (status === 'cancelled') {
+    return `<div class="card"><span class="badge err">Cancelled</span><p class="value" style="margin-top:8px;">${flightNum} has been cancelled.</p></div>`;
+  }
+
+  return `<div class="card"><span class="badge off">${status}</span><p class="value" style="margin-top:8px;">${depA} → ${arrA}</p></div>`;
+}
+
+async function load() {
+  document.getElementById('date-label').textContent = dateLabel();
+  const main = document.getElementById('main');
+  main.innerHTML = `<div class="card"><p class="loading">Checking status...</p></div>`;
+
+  try {
+    const resp = await fetch(`${BASE}/status`);
+    const s = await resp.json();
+    const t = now();
+
+    if (s.type === 'off') {
+      main.innerHTML = `<div class="card">
+        <span class="badge off">Day off</span>
+        <p class="value">${s.label}</p>
+        <p class="label" style="margin-top:6px;">She is in Taipei and free today</p>
+        <hr class="divider">
+        <div class="footer"><span>Updated ${fmt(t.toISOString())}</span><button class="refresh-btn" onclick="load()">Refresh</button></div>
+      </div>`; return;
+    }
+
+    if (s.type === 'layover') {
+      main.innerHTML = `<div class="card">
+        <span class="badge layover">On layover</span>
+        <p class="value">${s.label}</p>
+        <p class="label" style="margin-top:6px;">She is resting at her layover city</p>
+        <hr class="divider">
+        <div class="footer"><span>Updated ${fmt(t.toISOString())}</span><button class="refresh-btn" onclick="load()">Refresh</button></div>
+      </div>`; return;
+    }
+
+    if (s.type === 'standby') {
+      const phaseMsg = s.phase === 'before' ? `Standby starts at ${s.time.split('-')[0]}`
+        : s.phase === 'active' ? `On standby now · released at ${s.time.split('-')[1]}`
+        : `Standby ended — she has been released`;
+      const badgeCls = s.phase === 'released' ? 'off' : 'standby';
+      main.innerHTML = `<div class="card">
+        <span class="badge ${badgeCls}">${s.phase === 'released' ? 'Released' : 'On standby'}</span>
+        <p class="value">${s.label} · ${s.time}</p>
+        <p class="label" style="margin-top:6px;">${phaseMsg}</p>
+        <hr class="divider">
+        <div class="footer"><span>Updated ${fmt(t.toISOString())}</span><button class="refresh-btn" onclick="load()">Refresh</button></div>
+      </div>`; return;
+    }
+
+    if (s.type === 'fly') {
+      if (s.autoSelected && s.flightData) {
+        main.innerHTML = renderFlight(s.flightNum, s.flightData); return;
+      }
+      if (s.flights) {
+        main.innerHTML = `<div class="card">
+          <span class="badge fly">Flight day</span>
+          <p class="value" style="margin-top:8px;">Couldn't auto-detect — tap to check:</p>
+          ${s.flights.map(f => `<button class="refresh-btn" style="width:100%;margin-top:8px;padding:10px;" onclick="checkFlight('${f}')">${f}</button>`).join('')}
+        </div>`; return;
+      }
+    }
+
+    main.innerHTML = `<div class="card"><p class="value">No schedule data for today</p></div>`;
+
+  } catch(e) {
+    main.innerHTML = `<div class="card">
+      <span class="badge err">Connection error</span>
+      <p class="value" style="margin-top:8px;font-size:13px;">Server may be waking up. Wait 30 seconds and retry.</p>
+      <button class="refresh-btn" style="margin-top:12px;width:100%;padding:10px;" onclick="load()">Retry</button>
+    </div>`;
+  }
+}
+
+async function checkFlight(num) {
+  const main = document.getElementById('main');
+  main.innerHTML = `<div class="card"><p class="loading">Fetching ${num}...</p></div>`;
+  try {
+    const resp = await fetch(`${BASE}/flight?num=${num}`);
+    const data = await resp.json();
+    if (!data.data || !data.data[0]) {
+      main.innerHTML = `<div class="card"><span class="badge err">No data</span><p class="value" style="margin-top:8px;">No live data for ${num}</p><button class="refresh-btn" style="margin-top:12px;" onclick="load()">Back</button></div>`;
+      return;
+    }
+    main.innerHTML = renderFlight(num, data.data[0]);
+  } catch(e) {
+    main.innerHTML = `<div class="card"><span class="badge err">Error</span><p class="value" style="margin-top:8px;font-size:13px;">${e.message}</p></div>`;
+  }
+}
+
+load();
+</script>
+</body>
+</html>

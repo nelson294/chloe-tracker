@@ -11,20 +11,16 @@ app.use((req, res, next) => {
 });
 
 const API_KEY = 'e5984821e9d4884d79e40edf4ef24b0b';
-const HKT_OFFSET = 8 * 60; // HKT = UTC+8
+const HKT_OFFSET_MS = 8 * 60 * 60 * 1000;
 
-// Get current date in HKT as YYYY-MM-DD
 function todayHKT() {
-  const now = new Date();
-  const hkt = new Date(now.getTime() + HKT_OFFSET * 60 * 1000);
+  const hkt = new Date(Date.now() + HKT_OFFSET_MS);
   return hkt.toISOString().slice(0, 10);
 }
 
-// Get current HH:MM in HKT
-function nowHKT() {
-  const now = new Date();
-  const hkt = new Date(now.getTime() + HKT_OFFSET * 60 * 1000);
-  return { h: hkt.getUTCHours(), m: hkt.getUTCMinutes(), mins: hkt.getUTCHours() * 60 + hkt.getUTCMinutes() };
+function nowHKTMins() {
+  const hkt = new Date(Date.now() + HKT_OFFSET_MS);
+  return hkt.getUTCHours() * 60 + hkt.getUTCMinutes();
 }
 
 const ROSTER = {
@@ -62,30 +58,24 @@ const ROSTER = {
   '2026-06-30': { type: 'off', label: 'Day off (ADO)' },
 };
 
-// Fetch a flight and filter to only today's date (HKT)
 async function fetchFlight(flightNum) {
   const today = todayHKT();
-  const url = `http://api.aviationstack.com/v1/flights?access_key=${API_KEY}&flight_iata=${flightNum}&limit=5`;
+  const url = `http://api.aviationstack.com/v1/flights?access_key=${API_KEY}&flight_iata=${flightNum}&flight_date=${today}&limit=5`;
   const r = await fetch(url);
   const d = await r.json();
   if (!d.data || d.data.length === 0) return null;
 
-  // Filter to flights departing today (HKT)
+  // Filter to flights whose departure date in HKT matches today
   const todayFlights = d.data.filter(f => {
-    const depSched = f.departure && f.departure.scheduled;
-    if (!depSched) return false;
-    // Convert scheduled departure to HKT date
-    const depHKT = new Date(new Date(depSched).getTime() + HKT_OFFSET * 60 * 1000);
+    const dep = f.departure && f.departure.scheduled;
+    if (!dep) return false;
+    const depHKT = new Date(new Date(dep).getTime() + HKT_OFFSET_MS);
     return depHKT.toISOString().slice(0, 10) === today;
   });
 
-  if (todayFlights.length > 0) return todayFlights[0];
-
-  // Fallback: return most recent if none match today
-  return d.data[0];
+  return todayFlights.length > 0 ? todayFlights[0] : d.data[0];
 }
 
-// Proxy endpoint
 app.get('/flight', async (req, res) => {
   const { num } = req.query;
   if (!num) return res.status(400).json({ error: 'Missing flight number' });
@@ -97,11 +87,10 @@ app.get('/flight', async (req, res) => {
   }
 });
 
-// Smart status endpoint
 app.get('/status', async (req, res) => {
   const key = todayHKT();
   const day = ROSTER[key];
-  const { mins: nowMins } = nowHKT();
+  const nowMins = nowHKTMins();
 
   if (!day) return res.json({ type: 'unknown', key, message: 'No roster data for today' });
   if (day.type === 'off') return res.json({ type: 'off', label: day.label });
@@ -125,17 +114,14 @@ app.get('/status', async (req, res) => {
       } catch { return { flightNum: fn, data: null }; }
     }));
 
-    // Priority: active/en-route first
     const active = results.find(r => r.data && (r.data.flight_status === 'active' || r.data.flight_status === 'en-route'));
     if (active) return res.json({ type: 'fly', flightNum: active.flightNum, flightData: active.data, autoSelected: true });
 
-    // Then: next scheduled departure
     const scheduled = results
       .filter(r => r.data && r.data.flight_status === 'scheduled')
       .sort((a, b) => new Date(a.data.departure.scheduled || 0) - new Date(b.data.departure.scheduled || 0));
     if (scheduled.length > 0) return res.json({ type: 'fly', flightNum: scheduled[0].flightNum, flightData: scheduled[0].data, autoSelected: true });
 
-    // Then: most recently landed
     const landed = results.filter(r => r.data && r.data.flight_status === 'landed');
     if (landed.length > 0) {
       const last = landed[landed.length - 1];
