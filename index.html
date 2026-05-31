@@ -75,20 +75,25 @@ function renderFlight(flightNum, f) {
   const t = now();
 
   if (status === 'active' || status === 'en-route') {
-    const refDep = depActual || depSched;
-    const refArr = arrEst || arrSched;
-    const totalMs = refDep && refArr ? refArr - refDep : null;
-    const elMs = refDep ? t - refDep : null;
-    let pct = 0, elapsed = '', eta = '';
+    // Use AirLabs percent and eta fields directly — more accurate than self-calculated
+    const pct = f.percent || 0;
+    const etaMins = f.etaMins || null;
+    let elapsed = '', eta = '';
 
-    if (totalMs && elMs && totalMs > 0) {
-      pct = Math.min(100, Math.round((elMs / totalMs) * 100));
+    if (depActual) {
+      const elMs = t - depActual;
       const elMins = Math.round(elMs / 60000);
-      const remMins = Math.round((totalMs - elMs) / 60000);
       elapsed = `${Math.floor(elMins/60)}h ${elMins%60}m airborne`;
-      eta = remMins > 0 ? `${Math.floor(remMins/60)}h ${remMins%60}m to landing` : 'Landing soon';
     }
-    if (refArr) eta += (eta ? ' · ' : '') + `lands ~${fmt(refArr)}`;
+
+    if (etaMins && etaMins > 0) {
+      const landTime = new Date(Date.now() + etaMins * 60 * 1000);
+      const hkt = new Date(landTime.getTime() + 8 * 60 * 60 * 1000);
+      const hktStr = hkt.toISOString().slice(11, 16);
+      eta = `${Math.floor(etaMins/60)}h ${etaMins%60}m to landing · lands ~${hktStr}`;
+    } else if (arrEst) {
+      eta = `Lands ~${fmt(arrEst.toISOString())}`;
+    }
 
     const alt = live.altitude ? Math.round(live.altitude).toLocaleString() + ' ft' : null;
     const spd = live.speed_horizontal ? Math.round(live.speed_horizontal) + ' km/h' : null;

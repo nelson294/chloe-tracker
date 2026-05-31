@@ -10,7 +10,7 @@ app.use((req, res, next) => {
   next();
 });
 
-const RAPIDAPI_KEY = '0ee7c674damsh24dacf33db0356fp16cd45jsn9960ceedeb4d';
+const AIRLABS_KEY = '13f88a25-56f7-4851-98bf-484a13aa12ce';
 const HKT_OFFSET_MS = 8 * 60 * 60 * 1000;
 
 function todayHKT() {
@@ -58,83 +58,84 @@ const ROSTER = {
   '2026-06-30': { type: 'off', label: 'Day off (ADO)' },
 };
 
-// AeroDataBox: fetch flight by number and today's date
+// Use /flight (singular) endpoint — returns full schedule + live position + eta
 async function fetchFlight(flightNum) {
-  const today = todayHKT();
-  // AeroDataBox uses flight number without airline prefix for the path
-  const url = `https://aerodatabox.p.rapidapi.com/flights/number/${flightNum}/${today}?withLocation=true`;
-  const r = await fetch(url, {
-    headers: {
-      'x-rapidapi-host': 'aerodatabox.p.rapidapi.com',
-      'x-rapidapi-key': RAPIDAPI_KEY
-    }
-  });
-  if (!r.ok) {
-    const text = await r.text();
-    throw new Error(`AeroDataBox error ${r.status}: ${text}`);
-  }
+  const url = `https://airlabs.co/api/v9/flight?flight_iata=${flightNum}&api_key=${AIRLABS_KEY}`;
+  const r = await fetch(url);
   const d = await r.json();
-  // AeroDataBox returns an array of flights
-  if (Array.isArray(d) && d.length > 0) return d[0];
-  if (d && d.departures) return d; // airport format fallback
-  return null;
+  if (!d.response) return null;
+  return d.response;
 }
 
-// Normalise AeroDataBox response to our internal format
-function normalise(raw, flightNum) {
+function buildFlightData(raw) {
   if (!raw) return null;
 
-  const dep = raw.departure || {};
-  const arr = raw.arrival || {};
+  // ETA: use airlabs eta field (minutes from now) if available
+  let estimatedArrival = null;
+  if (raw.eta && raw.status === 'en-route') {
+    estimatedArrival = new Date(Date.now() + raw.eta * 60 * 1000).toISOString();
+  } else if (raw.arr_estimated_utc) {
+    estimatedArrival = raw.arr_estimated_utc.replace(' ', 'T') + 'Z';
+  } else if (raw.arr_time_utc) {
+    estimatedArrival = raw.arr_time_utc.replace(' ', 'T') + 'Z';
+  }
 
-  // AeroDataBox status: Landed, EnRoute, Scheduled, Cancelled, Unknown
+  // Actual arrival
+  let actualArrival = null;
+  if (raw.arr_actual_utc) {
+    actualArrival = raw.arr_actual_utc.replace(' ', 'T') + 'Z';
+  }
+
+  // Departure times
+  const depActual = raw.dep_actual_utc ? raw.dep_actual_utc.replace(' ', 'T') + 'Z' : null;
+  const depScheduled = raw.dep_time_utc ? raw.dep_time_utc.replace(' ', 'T') + 'Z' : null;
+  const arrScheduled = raw.arr_time_utc ? raw.arr_time_utc.replace(' ', 'T') + 'Z' : null;
+
   let status = 'unknown';
   const s = (raw.status || '').toLowerCase();
-  if (s === 'landed') status = 'landed';
-  else if (s === 'enroute' || s === 'en-route') status = 'active';
+  if (s === 'en-route') status = 'active';
+  else if (s === 'landed') status = 'landed';
   else if (s === 'scheduled') status = 'scheduled';
   else if (s === 'cancelled') status = 'cancelled';
-  else if (s.includes('route') || s.includes('air')) status = 'active';
 
   return {
     flight_status: status,
-    flight_number: flightNum,
+    flight_number: raw.flight_iata,
+    percent: raw.percent || 0,
+    etaMins: raw.eta || null,
     departure: {
-      iata: dep.airport && dep.airport.iata,
-      scheduled: (dep.revisedTime && dep.revisedTime.utc) || (dep.scheduledTime && dep.scheduledTime.utc),
-      actual: (dep.actualTime && dep.actualTime.utc) || (dep.revisedTime && dep.revisedTime.utc),
-      timezone: dep.airport && dep.airport.timeZone
+      iata: raw.dep_iata,
+      scheduled: depScheduled,
+      actual: depActual,
     },
     arrival: {
-      iata: arr.airport && arr.airport.iata,
-      scheduled: (arr.revisedTime && arr.revisedTime.utc) || (arr.scheduledTime && arr.scheduledTime.utc),
-      estimated: (arr.predictedTime && arr.predictedTime.utc) || (arr.revisedTime && arr.revisedTime.utc),
-      actual: arr.actualTime && arr.actualTime.utc,
-      timezone: arr.airport && arr.airport.timeZone
+      iata: raw.arr_iata,
+      scheduled: arrScheduled,
+      estimated: estimatedArrival,
+      actual: actualArrival,
     },
-    aircraft: raw.aircraft ? { iata: raw.aircraft.model } : null,
-    live: raw.position ? {
-      altitude: raw.position.altitude,
-      speed_horizontal: raw.position.speedH
-    } : null,
-    _raw: raw
+    aircraft: raw.model ? { iata: raw.model } : null,
+    live: {
+      altitude: raw.alt ? Math.round(raw.alt * 3.28084) : null,
+      speed_horizontal: raw.speed || null,
+      lat: raw.lat,
+      lng: raw.lng,
+    },
   };
 }
 
-// Proxy endpoint
 app.get('/flight', async (req, res) => {
   const { num } = req.query;
   if (!num) return res.status(400).json({ error: 'Missing flight number' });
   try {
     const raw = await fetchFlight(num);
-    const flight = normalise(raw, num);
+    const flight = buildFlightData(raw);
     res.json({ data: flight ? [flight] : [] });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Smart status endpoint
 app.get('/status', async (req, res) => {
   const key = todayHKT();
   const day = ROSTER[key];
@@ -158,36 +159,26 @@ app.get('/status', async (req, res) => {
     const results = await Promise.all(flights.map(async (fn) => {
       try {
         const raw = await fetchFlight(fn);
-        const data = normalise(raw, fn);
+        const data = buildFlightData(raw);
         return { flightNum: fn, data };
       } catch (e) {
         return { flightNum: fn, data: null, error: e.message };
       }
     }));
 
-    // Priority 1: actively in the air
     const active = results.find(r => r.data && r.data.flight_status === 'active');
     if (active) return res.json({ type: 'fly', flightNum: active.flightNum, flightData: active.data, autoSelected: true });
 
-    // Priority 2: next scheduled departure
-    const scheduled = results
-      .filter(r => r.data && r.data.flight_status === 'scheduled')
-      .sort((a, b) => new Date(a.data.departure.scheduled || 0) - new Date(b.data.departure.scheduled || 0));
+    const scheduled = results.filter(r => r.data && r.data.flight_status === 'scheduled');
     if (scheduled.length > 0) return res.json({ type: 'fly', flightNum: scheduled[0].flightNum, flightData: scheduled[0].data, autoSelected: true });
 
-    // Priority 3: most recently landed
     const landed = results.filter(r => r.data && r.data.flight_status === 'landed');
     if (landed.length > 0) {
       const last = landed[landed.length - 1];
       return res.json({ type: 'fly', flightNum: last.flightNum, flightData: last.data, autoSelected: true, allLanded: true });
     }
 
-    // Fallback: show what we got with errors for debugging
-    return res.json({
-      type: 'fly', flights, autoSelected: false,
-      message: 'Could not determine current flight',
-      debug: results.map(r => ({ flightNum: r.flightNum, status: r.data && r.data.flight_status, error: r.error }))
-    });
+    return res.json({ type: 'fly', flights, autoSelected: false, debug: results });
   }
 });
 
@@ -195,16 +186,9 @@ app.get('/debug', async (req, res) => {
   const { num } = req.query;
   if (!num) return res.status(400).json({ error: 'provide ?num=BR256' });
   try {
-    const today = todayHKT();
-    const url = `https://aerodatabox.p.rapidapi.com/flights/number/${num}/${today}?withLocation=true`;
-    const r = await fetch(url, {
-      headers: {
-        'x-rapidapi-host': 'aerodatabox.p.rapidapi.com',
-        'x-rapidapi-key': RAPIDAPI_KEY
-      }
-    });
-    const text = await r.text();
-    res.json({ status: r.status, today, raw: text });
+    const raw = await fetchFlight(num);
+    const built = buildFlightData(raw);
+    res.json({ raw, built });
   } catch (e) {
     res.json({ error: e.message });
   }
