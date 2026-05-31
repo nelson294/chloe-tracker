@@ -10,17 +10,21 @@ app.use((req, res, next) => {
   next();
 });
 
-const AIRLABS_KEY = '13f88a25-56f7-4851-98bf-484a13aa12ce';
-const HKT_OFFSET_MS = 8 * 60 * 60 * 1000;
+const API_KEY = 'e5984821e9d4884d79e40edf4ef24b0b';
+const HKT_OFFSET = 8 * 60; // HKT = UTC+8
 
+// Get current date in HKT as YYYY-MM-DD
 function todayHKT() {
-  const hkt = new Date(Date.now() + HKT_OFFSET_MS);
+  const now = new Date();
+  const hkt = new Date(now.getTime() + HKT_OFFSET * 60 * 1000);
   return hkt.toISOString().slice(0, 10);
 }
 
-function nowHKTMins() {
-  const hkt = new Date(Date.now() + HKT_OFFSET_MS);
-  return hkt.getUTCHours() * 60 + hkt.getUTCMinutes();
+// Get current HH:MM in HKT
+function nowHKT() {
+  const now = new Date();
+  const hkt = new Date(now.getTime() + HKT_OFFSET * 60 * 1000);
+  return { h: hkt.getUTCHours(), m: hkt.getUTCMinutes(), mins: hkt.getUTCHours() * 60 + hkt.getUTCMinutes() };
 }
 
 const ROSTER = {
@@ -58,88 +62,47 @@ const ROSTER = {
   '2026-06-30': { type: 'off', label: 'Day off (ADO)' },
 };
 
-// Use /flight (singular) endpoint — returns full schedule + live position + eta
+// Fetch a flight and filter to only today's date (HKT)
 async function fetchFlight(flightNum) {
-  const url = `https://airlabs.co/api/v9/flight?flight_iata=${flightNum}&api_key=${AIRLABS_KEY}`;
+  const today = todayHKT();
+  const today = todayHKT();
+const url = `http://api.aviationstack.com/v1/flights?access_key=${API_KEY}&flight_iata=${flightNum}&flight_date=${today}&limit=5`;
   const r = await fetch(url);
   const d = await r.json();
-  if (!d.response) return null;
-  return d.response;
+  if (!d.data || d.data.length === 0) return null;
+
+  // Filter to flights departing today (HKT)
+  const todayFlights = d.data.filter(f => {
+    const depSched = f.departure && f.departure.scheduled;
+    if (!depSched) return false;
+    // Convert scheduled departure to HKT date
+    const depHKT = new Date(new Date(depSched).getTime() + HKT_OFFSET * 60 * 1000);
+    return depHKT.toISOString().slice(0, 10) === today;
+  });
+
+  if (todayFlights.length > 0) return todayFlights[0];
+
+  // Fallback: return most recent if none match today
+  return d.data[0];
 }
 
-function buildFlightData(raw) {
-  if (!raw) return null;
-
-  // ETA: use airlabs eta field (minutes from now) if available
-  let estimatedArrival = null;
-  if (raw.eta && raw.status === 'en-route') {
-    estimatedArrival = new Date(Date.now() + raw.eta * 60 * 1000).toISOString();
-  } else if (raw.arr_estimated_utc) {
-    estimatedArrival = raw.arr_estimated_utc.replace(' ', 'T') + 'Z';
-  } else if (raw.arr_time_utc) {
-    estimatedArrival = raw.arr_time_utc.replace(' ', 'T') + 'Z';
-  }
-
-  // Actual arrival
-  let actualArrival = null;
-  if (raw.arr_actual_utc) {
-    actualArrival = raw.arr_actual_utc.replace(' ', 'T') + 'Z';
-  }
-
-  // Departure times
-  const depActual = raw.dep_actual_utc ? raw.dep_actual_utc.replace(' ', 'T') + 'Z' : null;
-  const depScheduled = raw.dep_time_utc ? raw.dep_time_utc.replace(' ', 'T') + 'Z' : null;
-  const arrScheduled = raw.arr_time_utc ? raw.arr_time_utc.replace(' ', 'T') + 'Z' : null;
-
-  let status = 'unknown';
-  const s = (raw.status || '').toLowerCase();
-  if (s === 'en-route') status = 'active';
-  else if (s === 'landed') status = 'landed';
-  else if (s === 'scheduled') status = 'scheduled';
-  else if (s === 'cancelled') status = 'cancelled';
-
-  return {
-    flight_status: status,
-    flight_number: raw.flight_iata,
-    percent: raw.percent || 0,
-    etaMins: raw.eta || null,
-    departure: {
-      iata: raw.dep_iata,
-      scheduled: depScheduled,
-      actual: depActual,
-    },
-    arrival: {
-      iata: raw.arr_iata,
-      scheduled: arrScheduled,
-      estimated: estimatedArrival,
-      actual: actualArrival,
-    },
-    aircraft: raw.model ? { iata: raw.model } : null,
-    live: {
-      altitude: raw.alt ? Math.round(raw.alt * 3.28084) : null,
-      speed_horizontal: raw.speed || null,
-      lat: raw.lat,
-      lng: raw.lng,
-    },
-  };
-}
-
+// Proxy endpoint
 app.get('/flight', async (req, res) => {
   const { num } = req.query;
   if (!num) return res.status(400).json({ error: 'Missing flight number' });
   try {
-    const raw = await fetchFlight(num);
-    const flight = buildFlightData(raw);
+    const flight = await fetchFlight(num);
     res.json({ data: flight ? [flight] : [] });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
+// Smart status endpoint
 app.get('/status', async (req, res) => {
   const key = todayHKT();
   const day = ROSTER[key];
-  const nowMins = nowHKTMins();
+  const { mins: nowMins } = nowHKT();
 
   if (!day) return res.json({ type: 'unknown', key, message: 'No roster data for today' });
   if (day.type === 'off') return res.json({ type: 'off', label: day.label });
@@ -158,39 +121,29 @@ app.get('/status', async (req, res) => {
     const flights = day.flights || [];
     const results = await Promise.all(flights.map(async (fn) => {
       try {
-        const raw = await fetchFlight(fn);
-        const data = buildFlightData(raw);
+        const data = await fetchFlight(fn);
         return { flightNum: fn, data };
-      } catch (e) {
-        return { flightNum: fn, data: null, error: e.message };
-      }
+      } catch { return { flightNum: fn, data: null }; }
     }));
 
-    const active = results.find(r => r.data && r.data.flight_status === 'active');
+    // Priority: active/en-route first
+    const active = results.find(r => r.data && (r.data.flight_status === 'active' || r.data.flight_status === 'en-route'));
     if (active) return res.json({ type: 'fly', flightNum: active.flightNum, flightData: active.data, autoSelected: true });
 
-    const scheduled = results.filter(r => r.data && r.data.flight_status === 'scheduled');
+    // Then: next scheduled departure
+    const scheduled = results
+      .filter(r => r.data && r.data.flight_status === 'scheduled')
+      .sort((a, b) => new Date(a.data.departure.scheduled || 0) - new Date(b.data.departure.scheduled || 0));
     if (scheduled.length > 0) return res.json({ type: 'fly', flightNum: scheduled[0].flightNum, flightData: scheduled[0].data, autoSelected: true });
 
+    // Then: most recently landed
     const landed = results.filter(r => r.data && r.data.flight_status === 'landed');
     if (landed.length > 0) {
       const last = landed[landed.length - 1];
       return res.json({ type: 'fly', flightNum: last.flightNum, flightData: last.data, autoSelected: true, allLanded: true });
     }
 
-    return res.json({ type: 'fly', flights, autoSelected: false, debug: results });
-  }
-});
-
-app.get('/debug', async (req, res) => {
-  const { num } = req.query;
-  if (!num) return res.status(400).json({ error: 'provide ?num=BR256' });
-  try {
-    const raw = await fetchFlight(num);
-    const built = buildFlightData(raw);
-    res.json({ raw, built });
-  } catch (e) {
-    res.json({ error: e.message });
+    return res.json({ type: 'fly', flights, autoSelected: false, message: 'Could not determine current flight' });
   }
 });
 
