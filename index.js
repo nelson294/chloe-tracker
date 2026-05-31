@@ -62,7 +62,7 @@ const ROSTER = {
 async function fetchFlight(flightNum) {
   const today = todayHKT();
   // AeroDataBox uses flight number without airline prefix for the path
-  const url = `https://aerodatabox.p.rapidapi.com/flights/iata/${flightNum}/${today}`;
+  const url = `https://aerodatabox.p.rapidapi.com/flights/number/${flightNum}/${today}`;
   const r = await fetch(url, {
     headers: {
       'x-rapidapi-host': 'aerodatabox.p.rapidapi.com',
@@ -196,7 +196,7 @@ app.get('/debug', async (req, res) => {
   if (!num) return res.status(400).json({ error: 'provide ?num=BR256' });
   try {
     const today = todayHKT();
-    const url = `https://aerodatabox.p.rapidapi.com/flights/iata/${num}/${today}`;
+    const url = `https://aerodatabox.p.rapidapi.com/flights/number/${num}/${today}`;
     const r = await fetch(url, {
       headers: {
         'x-rapidapi-host': 'aerodatabox.p.rapidapi.com',
