@@ -6,9 +6,10 @@
 <title>Where is Chloe?</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f0; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
-  .container { width: 100%; max-width: 380px; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f0; min-height: 100vh; padding: 24px 20px 40px; }
+  .container { width: 100%; max-width: 380px; margin: 0 auto; }
   .card { background: #fff; border-radius: 16px; padding: 20px; margin-bottom: 12px; border: 1px solid rgba(0,0,0,0.08); }
+  .card.muted { background: #fafaf8; }
   .label { font-size: 12px; color: #888; margin-bottom: 2px; }
   .value { font-size: 15px; font-weight: 500; color: #1a1a1a; }
   .value.big { font-size: 22px; }
@@ -34,34 +35,179 @@
   .refresh-btn { background: none; border: 1px solid #ddd; border-radius: 8px; padding: 5px 12px; font-size: 12px; color: #555; cursor: pointer; }
   .refresh-btn:hover { background: #f5f5f0; }
   .loading { color: #aaa; font-size: 14px; padding: 8px 0; }
-  .header { text-align: center; margin-bottom: 20px; }
-  .header h1 { font-size: 18px; font-weight: 600; color: #1a1a1a; }
-  .header p { font-size: 13px; color: #888; margin-top: 4px; }
+  .section-label { font-size: 11px; font-weight: 600; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; margin: 20px 0 8px; }
+  .view-toggle { display: flex; background: #f0f0ed; border-radius: 10px; padding: 3px; margin-bottom: 20px; }
+  .view-btn { flex: 1; padding: 7px; font-size: 13px; font-weight: 500; border: none; background: none; border-radius: 8px; cursor: pointer; color: #888; }
+  .view-btn.active { background: #fff; color: #1a1a1a; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+  .countdown-big { font-size: 32px; font-weight: 600; color: #1a1a1a; margin: 4px 0; }
+  .next-row { display: flex; justify-content: space-between; align-items: flex-start; margin-top: 10px; }
+  .next-item { flex: 1; }
+  .next-item + .next-item { margin-left: 12px; padding-left: 12px; border-left: 1px solid #f0f0ed; }
 </style>
 </head>
 <body>
 <div class="container">
-  <div class="header">
-    <h1>Where is Chloe?</h1>
-    <p id="date-label"></p>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+    <div>
+      <h1 style="font-size:18px;font-weight:600;color:#1a1a1a;" id="page-title">Where is Chloe?</h1>
+      <p style="font-size:13px;color:#888;margin-top:2px;" id="date-label"></p>
+    </div>
   </div>
+
+  <div class="view-toggle">
+    <button class="view-btn active" onclick="switchView('nelson')">Nelson</button>
+    <button class="view-btn" onclick="switchView('chloe')">Chloe</button>
+  </div>
+
   <div id="main"></div>
+  <div id="next-section"></div>
+  <div id="countdown-section"></div>
 </div>
 
 <script>
 const BASE = 'https://chloe-tracker.onrender.com';
+let currentView = 'nelson';
 
-function now() { return new Date(); }
+const ROSTER = {
+  '2026-05-30': { type: 'fly', flights: ['BR255'], note: 'Departs TPE — overnight stay' },
+  '2026-05-31': { type: 'fly', flights: ['BR256'], note: 'Returns to TPE' },
+  '2026-06-01': { type: 'off', label: 'Day off (YK)' },
+  '2026-06-02': { type: 'fly', flights: ['BR198','BR197'], note: 'Same-day turnaround' },
+  '2026-06-03': { type: 'standby', label: 'LCS Standby', time: '17:00-20:00' },
+  '2026-06-04': { type: 'off', label: 'Day off (ADO)' },
+  '2026-06-05': { type: 'standby', label: 'LCS Standby', time: '17:00-20:00' },
+  '2026-06-06': { type: 'standby', label: 'SCS Standby', time: '14:00-17:00' },
+  '2026-06-07': { type: 'fly', flights: ['BR132','BR131'], note: 'Same-day turnaround' },
+  '2026-06-08': { type: 'off', label: 'Day off (ADO)' },
+  '2026-06-09': { type: 'fly', flights: ['BR12'], note: 'Departs TPE → LAX' },
+  '2026-06-10': { type: 'layover', label: 'LAX layover' },
+  '2026-06-11': { type: 'layover', label: 'LAX layover' },
+  '2026-06-12': { type: 'fly', flights: ['BR11'], note: 'Returns LAX → TPE' },
+  '2026-06-13': { type: 'off', label: 'Day off (ADO)' },
+  '2026-06-14': { type: 'off', label: 'Day off' },
+  '2026-06-15': { type: 'off', label: 'Day off (DO)' },
+  '2026-06-16': { type: 'fly', flights: ['BR16'], note: 'Departs TPE → LAX' },
+  '2026-06-17': { type: 'layover', label: 'LAX layover' },
+  '2026-06-18': { type: 'fly', flights: ['BR5'], note: 'In flight LAX → TPE' },
+  '2026-06-19': { type: 'fly', flights: ['BR5'], note: 'Arrives TPE' },
+  '2026-06-20': { type: 'off', label: 'Day off (ADO)' },
+  '2026-06-21': { type: 'off', label: 'Day off' },
+  '2026-06-22': { type: 'off', label: 'Day off' },
+  '2026-06-23': { type: 'off', label: 'Day off' },
+  '2026-06-24': { type: 'off', label: 'Day off (DO)' },
+  '2026-06-25': { type: 'off', label: 'Day off (DO)' },
+  '2026-06-26': { type: 'standby', label: 'SCS Standby', time: '06:45-09:45', alsoFly: ['BR281','BR282'] },
+  '2026-06-27': { type: 'fly', flights: ['BR281','BR282'], note: 'Same-day turnaround' },
+  '2026-06-28': { type: 'off', label: 'Day off' },
+  '2026-06-29': { type: 'off', label: 'Day off' },
+  '2026-06-30': { type: 'off', label: 'Day off (ADO)' },
+};
+
+function hktNow() {
+  return new Date(Date.now() + 8 * 60 * 60 * 1000);
+}
+
+function todayKey() {
+  const h = hktNow();
+  return h.toISOString().slice(0, 10);
+}
 
 function fmt(isoStr) {
   if (!isoStr) return '—';
-  // Convert to HKT (UTC+8)
   const hkt = new Date(new Date(isoStr).getTime() + 8 * 60 * 60 * 1000);
   return hkt.toISOString().slice(11, 16);
 }
 
-function dateLabel() {
-  return now().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+function switchView(v) {
+  currentView = v;
+  document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector(`.view-btn[onclick="switchView('${v}')"]`).classList.add('active');
+  document.getElementById('page-title').textContent = v === 'nelson' ? 'Where is Chloe?' : 'My Schedule';
+  load();
+}
+
+// Find next working day and next day off from today
+function getUpcoming() {
+  const today = todayKey();
+  const keys = Object.keys(ROSTER).sort();
+  let nextWork = null, nextOff = null;
+
+  for (const k of keys) {
+    if (k <= today) continue;
+    const d = ROSTER[k];
+    if (!nextWork && (d.type === 'fly' || d.type === 'standby')) nextWork = { date: k, day: d };
+    if (!nextOff && d.type === 'off') nextOff = { date: k, day: d };
+    if (nextWork && nextOff) break;
+  }
+  return { nextWork, nextOff };
+}
+
+function daysUntil(dateStr) {
+  const today = todayKey();
+  const t = new Date(today), d = new Date(dateStr);
+  return Math.round((d - t) / 86400000);
+}
+
+function friendlyDate(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00+08:00');
+  return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+}
+
+function renderNextSection() {
+  const { nextWork, nextOff } = getUpcoming();
+  const todayDay = ROSTER[todayKey()];
+  const isOffToday = todayDay && todayDay.type === 'off';
+
+  let html = '<p class="section-label">Coming up</p>';
+
+  if (nextWork) {
+    const days = daysUntil(nextWork.date);
+    const d = nextWork.day;
+    const flightStr = d.flights ? d.flights.join(' / ') : d.label;
+    const daysLabel = days === 1 ? 'Tomorrow' : `In ${days} days`;
+    html += `<div class="card">
+      <p class="label">${daysLabel} · ${friendlyDate(nextWork.date)}</p>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
+        <p class="value">${flightStr}</p>
+        <span class="badge ${d.type === 'standby' ? 'standby' : 'fly'}">${d.type === 'standby' ? 'Standby' : 'Flying'}</span>
+      </div>
+      ${d.note ? `<p class="label" style="margin-top:4px;">${d.note}</p>` : ''}
+      ${d.time ? `<p class="label" style="margin-top:4px;">${d.time}</p>` : ''}
+    </div>`;
+  }
+
+  if (nextOff) {
+    const days = daysUntil(nextOff.date);
+    const daysLabel = days === 1 ? 'Tomorrow' : `In ${days} days`;
+    html += `<div class="card muted">
+      <p class="label">Next day off · ${friendlyDate(nextOff.date)}</p>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
+        <p class="value">${daysLabel}</p>
+        <span class="badge off">Free</span>
+      </div>
+    </div>`;
+  }
+
+  document.getElementById('next-section').innerHTML = html;
+}
+
+function renderCountdown() {
+  const { nextOff } = getUpcoming();
+  if (!nextOff) { document.getElementById('countdown-section').innerHTML = ''; return; }
+
+  const days = daysUntil(nextOff.date);
+  const todayDay = ROSTER[todayKey()];
+  const isOffToday = todayDay && todayDay.type === 'off';
+
+  if (isOffToday) { document.getElementById('countdown-section').innerHTML = ''; return; }
+
+  document.getElementById('countdown-section').innerHTML = `
+    <p class="section-label">Countdown to next day off</p>
+    <div class="card" style="text-align:center;padding:24px 20px;">
+      <p class="label">Days until she's free</p>
+      <p class="countdown-big">${days}</p>
+      <p class="label">${friendlyDate(nextOff.date)}</p>
+    </div>`;
 }
 
 function renderFlight(flightNum, f) {
@@ -72,10 +218,9 @@ function renderFlight(flightNum, f) {
   const depSched = dep.scheduled ? new Date(dep.scheduled) : null;
   const arrSched = arr.scheduled ? new Date(arr.scheduled) : null;
   const arrEst = arr.estimated ? new Date(arr.estimated) : null;
-  const t = now();
+  const t = new Date();
 
-  if (status === 'active' || status === 'en-route') {
-    // Use AirLabs percent and eta fields directly — more accurate than self-calculated
+  if (status === 'active') {
     const pct = f.percent || 0;
     const etaMins = f.etaMins || null;
     let elapsed = '', eta = '';
@@ -99,29 +244,28 @@ function renderFlight(flightNum, f) {
     const spd = live.speed_horizontal ? Math.round(live.speed_horizontal) + ' km/h' : null;
     const aircraft = f.aircraft ? f.aircraft.iata || '' : '';
 
-    return `
-      <div class="card">
-        <p class="label">Flight</p>
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <span class="value big">${flightNum}</span>
-          <span class="badge fly">In the air</span>
-        </div>
-        ${aircraft ? `<p class="label" style="margin-top:2px;">EVA Air · ${aircraft}</p>` : ''}
-        <div class="route">
-          <span class="airport">${depA}</span>
-          <div class="line"><div class="dot" style="left:calc(${pct}% - 6px)"></div></div>
-          <span class="airport">${arrA}</span>
-        </div>
-        <div class="bar-wrap"><div class="bar" style="width:${pct}%"></div></div>
-        <div class="bar-labels"><span>${elapsed}</span><span>${pct}% complete</span></div>
-        <p class="value" style="font-size:14px;">${eta}</p>
-        ${alt || spd ? `<div class="metrics">
-          ${alt ? `<div class="metric"><p class="label">Altitude</p><p class="value">${alt}</p></div>` : ''}
-          ${spd ? `<div class="metric"><p class="label">Speed</p><p class="value">${spd}</p></div>` : ''}
-        </div>` : ''}
-        <hr class="divider">
-        <div class="footer"><span>Updated ${fmt(t.toISOString())}</span><button class="refresh-btn" onclick="load()">Refresh</button></div>
-      </div>`;
+    return `<div class="card">
+      <p class="label">Flight</p>
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span class="value big">${flightNum}</span>
+        <span class="badge fly">In the air</span>
+      </div>
+      ${aircraft ? `<p class="label" style="margin-top:2px;">EVA Air · ${aircraft}</p>` : ''}
+      <div class="route">
+        <span class="airport">${depA}</span>
+        <div class="line"><div class="dot" style="left:calc(${pct}% - 6px)"></div></div>
+        <span class="airport">${arrA}</span>
+      </div>
+      <div class="bar-wrap"><div class="bar" style="width:${pct}%"></div></div>
+      <div class="bar-labels"><span>${elapsed}</span><span>${pct}% complete</span></div>
+      <p class="value" style="font-size:14px;">${eta}</p>
+      ${alt || spd ? `<div class="metrics">
+        ${alt ? `<div class="metric"><p class="label">Altitude</p><p class="value">${alt}</p></div>` : ''}
+        ${spd ? `<div class="metric"><p class="label">Speed</p><p class="value">${spd}</p></div>` : ''}
+      </div>` : ''}
+      <hr class="divider">
+      <div class="footer"><span>Updated ${fmt(t.toISOString())}</span><button class="refresh-btn" onclick="load()">Refresh</button></div>
+    </div>`;
   }
 
   if (status === 'landed') {
@@ -154,64 +298,109 @@ function renderFlight(flightNum, f) {
   return `<div class="card"><span class="badge off">${status}</span><p class="value" style="margin-top:8px;">${depA} → ${arrA}</p></div>`;
 }
 
+function renderChloeView(s) {
+  const main = document.getElementById('main');
+  const t = new Date();
+  const todayKey2 = todayKey();
+  const day = ROSTER[todayKey2];
+
+  let statusCard = '';
+  if (s.type === 'off') {
+    statusCard = `<div class="card">
+      <span class="badge off">Day off</span>
+      <p class="value" style="margin-top:4px;">${s.label}</p>
+      <p class="label" style="margin-top:6px;">Rest up — you're free today</p>
+    </div>`;
+  } else if (s.type === 'layover') {
+    statusCard = `<div class="card">
+      <span class="badge layover">On layover</span>
+      <p class="value" style="margin-top:4px;">${s.label}</p>
+      <p class="label" style="margin-top:6px;">Enjoy your time away</p>
+    </div>`;
+  } else if (s.type === 'standby') {
+    const phaseMsg = s.phase === 'before' ? `Standby starts at ${s.time.split('-')[0]}`
+      : s.phase === 'active' ? `You are on standby until ${s.time.split('-')[1]}`
+      : `Standby ended — you have been released`;
+    statusCard = `<div class="card">
+      <span class="badge ${s.phase === 'released' ? 'off' : 'standby'}">${s.phase === 'released' ? 'Released' : 'On standby'}</span>
+      <p class="value" style="margin-top:4px;">${s.label} · ${s.time}</p>
+      <p class="label" style="margin-top:6px;">${phaseMsg}</p>
+    </div>`;
+  } else if (s.type === 'fly' && s.autoSelected && s.flightData) {
+    statusCard = renderFlight(s.flightNum, s.flightData);
+  } else if (s.type === 'fly') {
+    statusCard = `<div class="card">
+      <span class="badge fly">Flight day</span>
+      <p class="value" style="margin-top:4px;">${day && day.flights ? day.flights.join(' / ') : ''}</p>
+      <p class="label" style="margin-top:6px;">${day && day.note ? day.note : ''}</p>
+    </div>`;
+  }
+
+  main.innerHTML = statusCard;
+}
+
 async function load() {
-  document.getElementById('date-label').textContent = dateLabel();
+  document.getElementById('date-label').textContent = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
   const main = document.getElementById('main');
   main.innerHTML = `<div class="card"><p class="loading">Checking status...</p></div>`;
+  document.getElementById('next-section').innerHTML = '';
+  document.getElementById('countdown-section').innerHTML = '';
 
   try {
     const resp = await fetch(`${BASE}/status`);
     const s = await resp.json();
-    const t = now();
+    const t = new Date();
 
+    if (currentView === 'chloe') {
+      renderChloeView(s);
+      renderNextSection();
+      return;
+    }
+
+    // Nelson view
     if (s.type === 'off') {
       main.innerHTML = `<div class="card">
         <span class="badge off">Day off</span>
-        <p class="value">${s.label}</p>
+        <p class="value" style="margin-top:4px;">${s.label}</p>
         <p class="label" style="margin-top:6px;">She is in Taipei and free today</p>
         <hr class="divider">
         <div class="footer"><span>Updated ${fmt(t.toISOString())}</span><button class="refresh-btn" onclick="load()">Refresh</button></div>
-      </div>`; return;
-    }
-
-    if (s.type === 'layover') {
+      </div>`;
+    } else if (s.type === 'layover') {
       main.innerHTML = `<div class="card">
         <span class="badge layover">On layover</span>
-        <p class="value">${s.label}</p>
+        <p class="value" style="margin-top:4px;">${s.label}</p>
         <p class="label" style="margin-top:6px;">She is resting at her layover city</p>
         <hr class="divider">
         <div class="footer"><span>Updated ${fmt(t.toISOString())}</span><button class="refresh-btn" onclick="load()">Refresh</button></div>
-      </div>`; return;
-    }
-
-    if (s.type === 'standby') {
+      </div>`;
+    } else if (s.type === 'standby') {
       const phaseMsg = s.phase === 'before' ? `Standby starts at ${s.time.split('-')[0]}`
         : s.phase === 'active' ? `On standby now · released at ${s.time.split('-')[1]}`
         : `Standby ended — she has been released`;
-      const badgeCls = s.phase === 'released' ? 'off' : 'standby';
       main.innerHTML = `<div class="card">
-        <span class="badge ${badgeCls}">${s.phase === 'released' ? 'Released' : 'On standby'}</span>
-        <p class="value">${s.label} · ${s.time}</p>
+        <span class="badge ${s.phase === 'released' ? 'off' : 'standby'}">${s.phase === 'released' ? 'Released' : 'On standby'}</span>
+        <p class="value" style="margin-top:4px;">${s.label} · ${s.time}</p>
         <p class="label" style="margin-top:6px;">${phaseMsg}</p>
         <hr class="divider">
         <div class="footer"><span>Updated ${fmt(t.toISOString())}</span><button class="refresh-btn" onclick="load()">Refresh</button></div>
-      </div>`; return;
-    }
-
-    if (s.type === 'fly') {
+      </div>`;
+    } else if (s.type === 'fly') {
       if (s.autoSelected && s.flightData) {
-        main.innerHTML = renderFlight(s.flightNum, s.flightData); return;
-      }
-      if (s.flights) {
+        main.innerHTML = renderFlight(s.flightNum, s.flightData);
+      } else if (s.flights) {
         main.innerHTML = `<div class="card">
           <span class="badge fly">Flight day</span>
-          <p class="value" style="margin-top:8px;">Couldn't auto-detect — tap to check:</p>
+          <p class="value" style="margin-top:8px;">Tap to check:</p>
           ${s.flights.map(f => `<button class="refresh-btn" style="width:100%;margin-top:8px;padding:10px;" onclick="checkFlight('${f}')">${f}</button>`).join('')}
-        </div>`; return;
+        </div>`;
       }
+    } else {
+      main.innerHTML = `<div class="card"><p class="value">No schedule data for today</p></div>`;
     }
 
-    main.innerHTML = `<div class="card"><p class="value">No schedule data for today</p></div>`;
+    renderNextSection();
+    renderCountdown();
 
   } catch(e) {
     main.innerHTML = `<div class="card">
