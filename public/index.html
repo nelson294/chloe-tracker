@@ -109,27 +109,29 @@ const FLIGHTS={'BR255':{dep:'TPE',arr:'DPS'},'BR256':{dep:'DPS',arr:'TPE'},'BR19
 const LAYOVERS={'2026-06-10':{dest:'LAX',returnFlight:'BR11',returnDate:'Jun 12'},'2026-06-11':{dest:'LAX',returnFlight:'BR11',returnDate:'Jun 12'},'2026-06-17':{dest:'LAX',returnFlight:'BR5',returnDate:'Jun 18-19'}};
 
 // Scheduled times in HKT: [depH, depM, arrH, arrM, durationMins]
-// arr times are at destination converted to HKT where relevant
+// Durations based on actual historical flight times from Flightradar24
 const SCHEDULE={
-  'BR198':[9,0,12,25,205],    // TPE dep 09:00, NRT arr 13:25 JST = 12:25 HKT
-  'BR197':[13,25,17,5,220],   // NRT dep 14:25 JST = 13:25 HKT, TPE arr 17:05
-  'BR132':[9,30,11,30,165],   // TPE dep 09:30, KIX arr 12:30 JST = 11:30 HKT
-  'BR131':[13,0,15,30,150],   // KIX dep 14:00 JST = 13:00 HKT, TPE arr 15:30
-  'BR12':[23,40,20,0,740],    // TPE dep 23:40, LAX arr 20:00 local (next day)
-  'BR11':[15,15,6,0,885],     // LAX dep 23:15 = 15:15 HKT, TPE arr 06:00 +2 days
-  'BR16':[23,40,20,0,740],    // TPE dep 23:40, LAX arr 20:00 local
-  'BR5':[0,10,13,40,810],     // LAX dep 08:10 = 00:10 HKT, TPE arr 13:40 +1 day
-  'BR281':[8,0,10,0,180],     // TPE dep 08:00, CEB arr 11:00 local = 10:00 HKT
-  'BR282':[12,30,15,30,120],  // CEB dep 12:30 local = 12:30 HKT, TPE arr 15:30
-  'BR116':[10,10,14,0,230],   // TPE dep 10:10, CTS arr 15:00 JST = 14:00 HKT
-  'BR115':[15,0,17,30,210],   // CTS dep 16:00 JST = 15:00 HKT, TPE arr 17:30
-  'BR215':[9,25,13,55,270],   // TPE dep 09:25, SIN arr 13:55 (same tz)
-  'BR216':[15,20,20,0,280],   // SIN dep 15:20, TPE arr 20:00
+  'BR198':[9,0,12,25,205],    // TPE dep 09:00, NRT arr 12:25 HKT, actual avg 3h25m
+  'BR197':[13,25,16,25,180],  // NRT dep 13:25 HKT, TPE arr 16:25, actual avg 3h00m
+  'BR132':[9,30,11,30,165],   // TPE dep 09:30, KIX arr 11:30 HKT, 2h45m
+  'BR131':[13,0,15,30,150],   // KIX dep 13:00 HKT, TPE arr 15:30, 2h30m
+  'BR12':[23,40,19,25,705],   // TPE dep 23:40, LAX arr ~19:25 local, avg 11h45m
+  'BR11':[15,15,4,45,810],    // LAX dep 23:15 = 15:15 HKT, TPE arr 04:45 +1, avg 13h30m
+  'BR16':[23,40,19,10,690],   // TPE dep 23:40, LAX arr ~19:10 local, avg 11h30m
+  'BR5':[0,10,13,54,824],     // LAX dep 08:10 = 00:10 HKT, TPE arr 13:54, avg 13h44m
+  'BR281':[8,0,10,0,180],     // TPE dep 08:00, CEB arr 10:00 HKT, 3h00m
+  'BR282':[12,30,15,30,120],  // CEB dep 12:30 HKT, TPE arr 15:30, 2h00m (CEB=HKT)
+  'BR116':[10,10,14,0,230],   // TPE dep 10:10, CTS arr 14:00 HKT, 3h50m
+  'BR115':[15,0,17,30,210],   // CTS dep 15:00 HKT, TPE arr 17:30, 3h30m
+  'BR215':[9,25,13,55,270],   // TPE dep 09:25, SIN arr 13:55, 4h30m
+  'BR216':[15,20,20,0,280],   // SIN dep 15:20, TPE arr 20:00, 4h40m
 };
 
 // Total confirmed flight minutes for June
+// BR5 only counted once (Jun 18-19 is one continuous flight)
 const JUNE_FLIGHT_MINS=(function(){
-  const flights=['BR198','BR197','BR132','BR131','BR12','BR11','BR16','BR5','BR5','BR281','BR282','BR116','BR115','BR215','BR216'];
+  // List all confirmed flights for the month - BR5 counted once (Jun 18-19 = 1 continuous flight)
+  const flights=['BR198','BR197','BR132','BR131','BR12','BR11','BR16','BR5','BR281','BR282','BR116','BR115','BR215','BR216'];
   return flights.reduce((s,f)=>s+(SCHEDULE[f]?SCHEDULE[f][4]:0),0);
 })();
 
@@ -149,7 +151,31 @@ function city(iata){return CITIES[iata]||iata;}
 
 function getUpcoming(){
   const today=todayKey();
-  let nw=null,no=null;
+  const now=hktNow();
+  const nowMins=now.getUTCHours()*60+now.getUTCMinutes();
+  const todayDay=ROSTER[today];
+
+  // Check if today still has upcoming work (hasn't started yet)
+  let todayCountsAsWork=false;
+  if(todayDay&&(todayDay.type==='fly'||todayDay.type==='standby')){
+    let startMins=23*60+59; // default late
+    if(todayDay.type==='fly'&&todayDay.flights&&todayDay.flights[0]&&SCHEDULE[todayDay.flights[0]]){
+      const s=SCHEDULE[todayDay.flights[0]];
+      const depMins=s[0]*60+s[1];
+      startMins=depMins-120; // report time
+    } else if(todayDay.type==='standby'&&todayDay.time){
+      const sp=todayDay.time.split('-')[0].split(':');
+      const sbMins=parseInt(sp[0])*60+parseInt(sp[1]||0);
+      startMins=sbMins-60; // report time
+    }
+    if(nowMins<startMins) todayCountsAsWork=true;
+  }
+  let todayCountsAsOff=false;
+  if(todayDay&&todayDay.type==='off') todayCountsAsOff=true;
+
+  let nw=todayCountsAsWork?{date:today,day:todayDay}:null;
+  let no=todayCountsAsOff?{date:today,day:todayDay}:null;
+
   for(const k of Object.keys(ROSTER).sort()){
     if(k<=today)continue;
     const d=ROSTER[k];
@@ -324,6 +350,30 @@ function renderStatus(s){
     if(st==='landed'){dot.style.background='#4CAF50';el.innerHTML=`<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><div class="lbl">Flight</div><span class="pill p-land">Landed</span></div><div style="font-size:20px;font-weight:500;color:#1a1a1a;">${s.flightNum}</div><div style="font-size:13px;color:#888;margin-top:4px;">${dA} \u2192 ${aA} \u00b7 ${city(dA)} \u2192 ${city(aA)}</div><div style="font-size:12px;color:#aaa;margin-top:4px;">${view==='nelson'?'She has landed. Flight complete.':'You have landed. Welcome back!'}</div><div class="hr"></div><div class="footer-row"><span class="foot-txt">Updated ${fmtHKT(t.toISOString())} HKT</span><button class="rbtn" onclick="loadStatus()">Refresh</button></div></div>`;return;}
     if(st==='scheduled'){dot.style.background='#ccc';const ds=dep.scheduled?new Date(dep.scheduled):null,mu=ds?Math.round((ds-t)/60000):null,cd=mu&&mu>0?`Departs in ${Math.floor(mu/60)}h ${mu%60}m`:'Departing soon';el.innerHTML=`<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><div class="lbl">Flight</div><span class="pill p-sby">Not departed</span></div><div style="font-size:20px;font-weight:500;color:#1a1a1a;">${s.flightNum}</div><div style="font-size:13px;color:#888;margin-top:4px;">${dA} \u2192 ${aA} \u00b7 ${city(dA)} \u2192 ${city(aA)}</div><div style="font-size:13px;font-weight:500;color:#1a1a1a;margin-top:6px;">${cd}</div>${ds?`<div style="font-size:11px;color:#aaa;margin-top:2px;">Scheduled ${fmtHKT(ds.toISOString())} HKT</div>`:''}</div>`;return;}
   }
+  // Pre-flight: before report time, don't show API data
+  if(s.type==='pre-flight'||s.type==='pre-standby'){
+    const d=s.day;
+    const rH=Math.floor(s.reportMins/60),rM=s.reportMins%60;
+    const isPreflight=s.type==='pre-flight';
+    const f=d.flights?d.flights[0]:'';
+    const r=FLIGHTS[f]||{};
+    const routeStr=r.dep&&r.arr?`${city(r.dep)} → ${city(r.arr)}`:'';
+    const msg=view==='nelson'
+      ?`She is off until report time at ${pad2(rH)}:${pad2(rM)}`
+      :`Your report time is ${pad2(rH)}:${pad2(rM)}`;
+    el.innerHTML=`<div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <div class="lbl">Today</div>
+        <span class="pill p-off">Not started</span>
+      </div>
+      <div class="val" style="font-size:16px;">${isPreflight?f:(d.label+' Standby')}</div>
+      ${routeStr?`<div style="font-size:13px;color:#555;margin-top:3px;">${routeStr}</div>`:''}
+      ${d.time&&!isPreflight?`<div style="font-size:12px;color:#555;margin-top:3px;">${d.time}</div>`:''}
+      <div style="font-size:12px;color:#888;margin-top:6px;">${msg}</div>
+    </div>`;
+    return;
+  }
+
   el.innerHTML='<div class="card"><div class="lbl">Today</div><div class="val" style="margin-top:4px;color:#aaa;">Loading flight data...</div></div>';
 }
 
