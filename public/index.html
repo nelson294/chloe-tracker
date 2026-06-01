@@ -43,7 +43,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; m
 .stat-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; margin-bottom: 10px; position: relative; z-index: 1; }
 .stat-card { background: #fff; border-radius: 14px; padding: 14px; border: 0.5px solid rgba(0,0,0,0.07); }
 .stat-val { font-size: 17px; font-weight: 500; color: #1a1a1a; margin-top: 4px; }
-.stat-sub { font-size: 10px; color: #aaa; margin-top: 2px; }
 .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
 .cal-hdr { text-align: center; font-size: 9px; color: #888; padding: 4px 0 3px; font-weight: 600; }
 .cday { border-radius: 6px; padding: 4px; min-height: 56px; font-size: 9px; border: 1px solid transparent; }
@@ -64,8 +63,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; m
 .tag-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
 .tag { font-size: 10px; color: #888; background: #f0f0ed; border-radius: 4px; padding: 2px 6px; }
 .time-tiles { border-top: 0.5px solid #f0f0ed; margin-top: 12px; padding-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.time-tile-val { font-size: 18px; font-weight: 500; color: #1a1a1a; margin-top: 3px; }
-.time-tile-sub { font-size: 10px; color: #aaa; margin-top: 2px; }
+.ttval { font-size: 18px; font-weight: 500; color: #1a1a1a; margin-top: 3px; }
+.ttsub { font-size: 10px; color: #aaa; margin-top: 2px; }
 </style>
 </head>
 <body>
@@ -105,37 +104,82 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; m
 
 <script>
 const CITIES={TPE:'Taipei',LAX:'Los Angeles',DPS:'Bali',NRT:'Tokyo',KIX:'Osaka',CEB:'Cebu',CTS:'Sapporo',SIN:'Singapore',HKG:'Hong Kong',ICN:'Seoul',BKK:'Bangkok'};
-const FLIGHTS={'BR255':{dep:'TPE',arr:'DPS'},'BR256':{dep:'DPS',arr:'TPE'},'BR198':{dep:'TPE',arr:'NRT'},'BR197':{dep:'NRT',arr:'TPE'},'BR132':{dep:'TPE',arr:'KIX'},'BR131':{dep:'KIX',arr:'TPE'},'BR12':{dep:'TPE',arr:'LAX',nextDay:true},'BR11':{dep:'LAX',arr:'TPE'},'BR16':{dep:'TPE',arr:'LAX',nextDay:true},'BR5':{dep:'LAX',arr:'TPE'},'BR281':{dep:'TPE',arr:'CEB'},'BR282':{dep:'CEB',arr:'TPE'},'BR116':{dep:'TPE',arr:'CTS'},'BR115':{dep:'CTS',arr:'TPE'},'BR215':{dep:'TPE',arr:'SIN'},'BR216':{dep:'SIN',arr:'TPE'}};
-const LAYOVERS={'2026-06-10':{dest:'LAX',returnFlight:'BR11',returnDate:'Jun 12'},'2026-06-11':{dest:'LAX',returnFlight:'BR11',returnDate:'Jun 12'},'2026-06-17':{dest:'LAX',returnFlight:'BR5',returnDate:'Jun 18-19'}};
 
-// Scheduled times in HKT: [depH, depM, arrH, arrM, durationMins]
-// Durations based on actual historical flight times from Flightradar24
-const SCHEDULE={
-  'BR198':[9,0,12,25,205],    // TPE dep 09:00, NRT arr 12:25 HKT, actual avg 3h25m
-  'BR197':[13,25,17,5,220],   // NRT dep 13:25 HKT, TPE arr 17:05, scheduled 3h40m (trip.com actual)
-  'BR132':[9,30,11,30,165],   // TPE dep 09:30, KIX arr 11:30 HKT, 2h45m
-  'BR131':[13,0,15,30,150],   // KIX dep 13:00 HKT, TPE arr 15:30, 2h30m
-  'BR12':[23,40,10,25,705],   // TPE dep 23:40 HKT, arr 10:25 HKT +1day (19:25 PDT), avg 11h45m
-  'BR11':[15,15,4,45,810],    // LAX dep 23:15 = 15:15 HKT, TPE arr 04:45 +1, avg 13h30m
-  'BR16':[23,40,10,10,690],   // TPE dep 23:40 HKT, arr 10:10 HKT +1day (19:10 PDT), avg 11h30m
-  'BR5':[0,10,13,54,824],     // LAX dep 08:10 = 00:10 HKT, TPE arr 13:54, avg 13h44m
-  'BR281':[8,0,10,0,180],     // TPE dep 08:00, CEB arr 10:00 HKT, 3h00m
-  'BR282':[12,30,15,30,120],  // CEB dep 12:30 HKT, TPE arr 15:30, 2h00m (CEB=HKT)
-  'BR116':[10,10,14,0,230],   // TPE dep 10:10, CTS arr 14:00 HKT, 3h50m
-  'BR115':[15,0,17,30,210],   // CTS dep 15:00 HKT, TPE arr 17:30, 3h30m
-  'BR215':[9,25,13,55,270],   // TPE dep 09:25, SIN arr 13:55, 4h30m
-  'BR216':[15,20,20,0,280],   // SIN dep 15:20, TPE arr 20:00, 4h40m
+const FLIGHTS={
+  'BR255':{dep:'TPE',arr:'DPS'},'BR256':{dep:'DPS',arr:'TPE'},
+  'BR198':{dep:'TPE',arr:'NRT'},'BR197':{dep:'NRT',arr:'TPE'},
+  'BR132':{dep:'TPE',arr:'KIX'},'BR131':{dep:'KIX',arr:'TPE'},
+  'BR12':{dep:'TPE',arr:'LAX',nextDay:true},'BR11':{dep:'LAX',arr:'TPE'},
+  'BR16':{dep:'TPE',arr:'LAX',nextDay:true},'BR5':{dep:'LAX',arr:'TPE'},
+  'BR281':{dep:'TPE',arr:'CEB'},'BR282':{dep:'CEB',arr:'TPE'},
+  'BR116':{dep:'TPE',arr:'CTS'},'BR115':{dep:'CTS',arr:'TPE'},
+  'BR215':{dep:'TPE',arr:'SIN'},'BR216':{dep:'SIN',arr:'TPE'},
 };
 
-// Total confirmed flight minutes for June
-// BR5 only counted once (Jun 18-19 is one continuous flight)
+const LAYOVERS={
+  '2026-06-10':{dest:'LAX',returnFlight:'BR11',returnDate:'Jun 12'},
+  '2026-06-11':{dest:'LAX',returnFlight:'BR11',returnDate:'Jun 12'},
+  '2026-06-17':{dest:'LAX',returnFlight:'BR5',returnDate:'Jun 18-19'},
+};
+
+// SCHEDULE: [depH, depM, arrH, arrM, durationMins] all times HKT
+// depH+depM + durationMins = arrH+arrM (verified). nextDay flights store arr in HKT too.
+// Sources: cross-checked Airportia + Flightera + actual recent flights where available.
+const SCHEDULE={
+  'BR198':[9,0,12,25,205],    // TPE→NRT 3h25m (trip.com actual)
+  'BR197':[13,25,17,5,220],   // NRT→TPE 3h40m (trip.com actual dep 14:25 JST arr 17:05)
+  'BR132':[9,30,11,27,117],   // TPE→KIX 1h57m (Airportia avg)
+  'BR131':[13,0,15,16,136],   // KIX→TPE 2h16m (Airportia avg)
+  'BR12':[23,40,10,25,705],   // TPE→LAX 11h45m; arr 10:25 HKT +1day (19:25 PDT)
+  'BR11':[15,15,4,45,810],    // LAX→TPE 13h30m (Airportia avg, your screenshot ~13h20m)
+  'BR16':[23,40,10,10,690],   // TPE→LAX 11h30m; arr 10:10 HKT +1day (19:10 PDT)
+  'BR5':[0,10,13,54,824],     // LAX→TPE 13h44m (Airportia avg)
+  'BR281':[8,0,10,30,150],    // TPE→CEB 2h30m (distance-based, short haul)
+  'BR282':[12,30,14,45,135],  // CEB→TPE 2h15m (distance-based, short haul)
+  'BR116':[10,10,14,0,230],   // TPE→CTS 3h50m (Aviability scheduled)
+  'BR115':[15,0,18,30,210],   // CTS→TPE 3h30m (distance-based)
+  'BR215':[9,25,13,55,270],   // TPE→SIN 4h30m (trip.com actual)
+  'BR216':[15,20,20,0,280],   // SIN→TPE 4h40m (Airpaz scheduled)
+};
+
+// June confirmed flights — BR5 counted once (Jun 18-19 = same continuous flight)
 const JUNE_FLIGHT_MINS=(function(){
-  // List all confirmed flights for the month - BR5 counted once (Jun 18-19 = 1 continuous flight)
   const flights=['BR198','BR197','BR132','BR131','BR12','BR11','BR16','BR5','BR281','BR282','BR116','BR115','BR215','BR216'];
   return flights.reduce((s,f)=>s+(SCHEDULE[f]?SCHEDULE[f][4]:0),0);
 })();
 
-const ROSTER={'2026-06-01':{type:'off',label:'YK'},'2026-06-02':{type:'fly',flights:['BR198','BR197'],dest:'NRT',sameDay:true},'2026-06-03':{type:'standby',label:'LCS',time:'17:00-20:00'},'2026-06-04':{type:'off',label:'ADO'},'2026-06-05':{type:'standby',label:'LCS',time:'17:00-20:00'},'2026-06-06':{type:'standby',label:'SCS',time:'14:00-17:00'},'2026-06-07':{type:'fly',flights:['BR132','BR131'],dest:'KIX',sameDay:true},'2026-06-08':{type:'off',label:'ADO'},'2026-06-09':{type:'fly',flights:['BR12'],dest:'LAX',returnFlight:'BR11',returnDate:'Jun 12'},'2026-06-10':{type:'layover',label:'LAX'},'2026-06-11':{type:'layover',label:'LAX'},'2026-06-12':{type:'fly',flights:['BR11'],dest:'TPE'},'2026-06-13':{type:'off',label:'ADO'},'2026-06-14':{type:'off',label:'DO'},'2026-06-15':{type:'off',label:'DO'},'2026-06-16':{type:'fly',flights:['BR16'],dest:'LAX',returnFlight:'BR5',returnDate:'Jun 18-19'},'2026-06-17':{type:'layover',label:'LAX'},'2026-06-18':{type:'fly',flights:['BR5'],dest:'TPE'},'2026-06-19':{type:'fly',flights:['BR5'],dest:'TPE'},'2026-06-20':{type:'off',label:'ADO'},'2026-06-21':{type:'off',label:'DO'},'2026-06-22':{type:'fly',flights:['BR116'],dest:'CTS',returnFlight:'BR115',returnDate:'Jun 23'},'2026-06-23':{type:'fly',flights:['BR115'],dest:'TPE'},'2026-06-24':{type:'off',label:'DO'},'2026-06-25':{type:'off',label:'DO'},'2026-06-26':{type:'standby',label:'SCS',time:'06:45-09:45'},'2026-06-27':{type:'fly',flights:['BR281','BR282'],dest:'CEB',sameDay:true},'2026-06-28':{type:'fly',flights:['BR215'],dest:'SIN',returnFlight:'BR216',returnDate:'Jun 29'},'2026-06-29':{type:'fly',flights:['BR216'],dest:'TPE'},'2026-06-30':{type:'off',label:'ADO'}};
+const ROSTER={
+  '2026-06-01':{type:'off',label:'YK'},
+  '2026-06-02':{type:'fly',flights:['BR198','BR197'],dest:'NRT',sameDay:true},
+  '2026-06-03':{type:'standby',label:'LCS',time:'17:00-20:00'},
+  '2026-06-04':{type:'off',label:'ADO'},
+  '2026-06-05':{type:'standby',label:'LCS',time:'17:00-20:00'},
+  '2026-06-06':{type:'standby',label:'SCS',time:'14:00-17:00'},
+  '2026-06-07':{type:'fly',flights:['BR132','BR131'],dest:'KIX',sameDay:true},
+  '2026-06-08':{type:'off',label:'ADO'},
+  '2026-06-09':{type:'fly',flights:['BR12'],dest:'LAX',returnFlight:'BR11',returnDate:'Jun 12'},
+  '2026-06-10':{type:'layover',label:'LAX'},
+  '2026-06-11':{type:'layover',label:'LAX'},
+  '2026-06-12':{type:'fly',flights:['BR11'],dest:'TPE'},
+  '2026-06-13':{type:'off',label:'ADO'},
+  '2026-06-14':{type:'off',label:'DO'},
+  '2026-06-15':{type:'off',label:'DO'},
+  '2026-06-16':{type:'fly',flights:['BR16'],dest:'LAX',returnFlight:'BR5',returnDate:'Jun 18-19'},
+  '2026-06-17':{type:'layover',label:'LAX'},
+  '2026-06-18':{type:'fly',flights:['BR5'],dest:'TPE'},
+  '2026-06-19':{type:'fly',flights:['BR5'],dest:'TPE'},
+  '2026-06-20':{type:'off',label:'ADO'},
+  '2026-06-21':{type:'off',label:'DO'},
+  '2026-06-22':{type:'fly',flights:['BR116'],dest:'CTS',returnFlight:'BR115',returnDate:'Jun 23'},
+  '2026-06-23':{type:'fly',flights:['BR115'],dest:'TPE'},
+  '2026-06-24':{type:'off',label:'DO'},
+  '2026-06-25':{type:'off',label:'DO'},
+  '2026-06-26':{type:'standby',label:'SCS',time:'06:45-09:45'},
+  '2026-06-27':{type:'fly',flights:['BR281','BR282'],dest:'CEB',sameDay:true},
+  '2026-06-28':{type:'fly',flights:['BR215'],dest:'SIN',returnFlight:'BR216',returnDate:'Jun 29'},
+  '2026-06-29':{type:'fly',flights:['BR216'],dest:'TPE'},
+  '2026-06-30':{type:'off',label:'ADO'},
+};
 
 const BASE='https://chloe-tracker.onrender.com';
 let view='nelson', lastS=null;
@@ -149,39 +193,41 @@ function friendlyDate(k){return new Date(k+'T12:00:00Z').toLocaleDateString('en-
 function daysUntil(k){return Math.round((new Date(k+'T00:00:00Z')-new Date(todayKey()+'T00:00:00Z'))/86400000);}
 function city(iata){return CITIES[iata]||iata;}
 
+// Get report time in minutes (HKT) for a given roster day
+function getReportMins(day){
+  if(!day) return null;
+  if(day.type==='fly'&&day.flights&&day.flights[0]&&SCHEDULE[day.flights[0]]){
+    const s=SCHEDULE[day.flights[0]];
+    return ((s[0]*60+s[1])-120+1440)%1440;
+  }
+  if(day.type==='standby'&&day.time){
+    const sp=day.time.split('-')[0].split(':');
+    return ((parseInt(sp[0])*60+parseInt(sp[1]||0))-60+1440)%1440;
+  }
+  return null;
+}
+
 function getUpcoming(){
   const today=todayKey();
   const now=hktNow();
   const nowMins=now.getUTCHours()*60+now.getUTCMinutes();
   const todayDay=ROSTER[today];
 
-  // Check if today still has upcoming work (hasn't started yet)
-  let todayCountsAsWork=false;
-  if(todayDay&&(todayDay.type==='fly'||todayDay.type==='standby')){
-    let startMins=23*60+59; // default late
-    if(todayDay.type==='fly'&&todayDay.flights&&todayDay.flights[0]&&SCHEDULE[todayDay.flights[0]]){
-      const s=SCHEDULE[todayDay.flights[0]];
-      const depMins=s[0]*60+s[1];
-      startMins=depMins-120; // report time
-    } else if(todayDay.type==='standby'&&todayDay.time){
-      const sp=todayDay.time.split('-')[0].split(':');
-      const sbMins=parseInt(sp[0])*60+parseInt(sp[1]||0);
-      startMins=sbMins-60; // report time
-    }
-    if(nowMins<startMins) todayCountsAsWork=true;
-  }
-  let todayCountsAsOff=false;
-  if(todayDay&&todayDay.type==='off') todayCountsAsOff=true;
+  let nw=null, no=null;
 
-  let nw=todayCountsAsWork?{date:today,day:todayDay}:null;
-  let no=todayCountsAsOff?{date:today,day:todayDay}:null;
+  // Check if today still counts as upcoming work (before report time)
+  if(todayDay&&(todayDay.type==='fly'||todayDay.type==='standby')){
+    const reportMins=getReportMins(todayDay);
+    if(reportMins!==null&&nowMins<reportMins) nw={date:today,day:todayDay};
+  }
+  if(todayDay&&todayDay.type==='off') no={date:today,day:todayDay};
 
   for(const k of Object.keys(ROSTER).sort()){
-    if(k<=today)continue;
+    if(k<=today) continue;
     const d=ROSTER[k];
-    if(!nw&&(d.type==='fly'||d.type==='standby'))nw={date:k,day:d};
-    if(!no&&d.type==='off')no={date:k,day:d};
-    if(nw&&no)break;
+    if(!nw&&(d.type==='fly'||d.type==='standby')) nw={date:k,day:d};
+    if(!no&&d.type==='off') no={date:k,day:d};
+    if(nw&&no) break;
   }
   return{nextWork:nw,nextOff:no};
 }
@@ -202,8 +248,7 @@ function setView(v,btn){
   view=v;
   document.querySelectorAll('.tbtn').forEach(b=>{b.classList.remove('on-nelson','on-chloe');});
   btn.classList.add(v==='nelson'?'on-nelson':'on-chloe');
-  const app=document.getElementById('app');
-  app.style.background=v==='nelson'?'#e8f4ff':'#fff0f5';
+  document.getElementById('app').style.background=v==='nelson'?'#e8f4ff':'#fff0f5';
   document.getElementById('pg-title').textContent=v==='nelson'?'Find my Chloe \u2726':'My schedule \u2726';
   buildSparkles(v);
   render(lastS);
@@ -262,17 +307,17 @@ function renderStatGrid(){
   if(!nw&&!no){document.getElementById('stat-grid-area').innerHTML='';return;}
   let h='<div class="stat-grid">';
   if(nw){
-    const d=nw.day,days=daysUntil(nw.date),dL=days===1?'Tomorrow':`${days} days`;
+    const d=nw.day,days=daysUntil(nw.date),dL=days===0?'Today':days===1?'Tomorrow':`${days} days`;
     const dc=d.dest?city(d.dest):'',of=d.flights?d.flights[0]:'';
     const nd=new Date(nw.date+'T12:00:00Z');
     const ndStr=nd.toLocaleDateString('en-GB',{day:'numeric',month:'short'})+' \u00b7 '+nd.toLocaleDateString('en-GB',{weekday:'short'});
     h+=`<div class="stat-card"><div class="lbl">Next working day</div><div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:4px;"><div class="stat-val">${dL}</div><div style="font-size:11px;font-weight:500;color:#888;">${ndStr}</div></div>${dc?`<div style="font-size:11px;color:#555;margin-top:5px;font-weight:500;">${of} \u2192 ${dc}</div>`:''}</div>`;
   }
   if(no){
-    const days=daysUntil(no.date);
+    const days=daysUntil(no.date),dL=days===0?'Today':days===1?'Tomorrow':`${days} days`;
     const nd=new Date(no.date+'T12:00:00Z');
     const ndStr=nd.toLocaleDateString('en-GB',{day:'numeric',month:'short'})+' \u00b7 '+nd.toLocaleDateString('en-GB',{weekday:'short'});
-    h+=`<div class="stat-card"><div class="lbl">Next day off</div><div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:4px;"><div class="stat-val">${days===1?'Tomorrow':`${days} days`}</div><div style="font-size:11px;font-weight:500;color:#888;">${ndStr}</div></div><div style="font-size:11px;color:#555;margin-top:5px;font-weight:500;">Free day</div></div>`;
+    h+=`<div class="stat-card"><div class="lbl">Next day off</div><div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:4px;"><div class="stat-val">${dL}</div><div style="font-size:11px;font-weight:500;color:#888;">${ndStr}</div></div><div style="font-size:11px;color:#555;margin-top:5px;font-weight:500;">Free day</div></div>`;
   }
   h+='</div>';
   document.getElementById('stat-grid-area').innerHTML=h;
@@ -282,7 +327,7 @@ function renderUpcoming(){
   const{nextWork:nw}=getUpcoming();
   if(!nw){document.getElementById('upcoming-area').innerHTML='';return;}
   const d=nw.day,days=daysUntil(nw.date);
-  const dL=days===1?'Tomorrow':`In ${days} days`;
+  const dL=days===0?'Today':days===1?'Tomorrow':`In ${days} days`;
   const of=d.flights?d.flights[0]:'';
   const or=FLIGHTS[of]||{};
   const depC=or.dep?city(or.dep):'',arrC=or.arr?city(or.arr):'';
@@ -293,37 +338,32 @@ function renderUpcoming(){
   else if(isSD&&d.flights&&d.flights.length>1) det=`<div class="tag-row"><span class="tag">${d.flights[0]} out \u00b7 ${d.flights[1]} back</span><span class="tag">Same-day</span></div>`;
   if(d.time) det+=`<div style="font-size:11px;color:#aaa;margin-top:6px;">${d.time}</div>`;
 
-  // Report time tile
+  // Report time
   let reportHTML='', landHTML='';
   if(d.type==='fly'&&of&&SCHEDULE[of]){
     const s=SCHEDULE[of];
-    const depTotalMins=s[0]*60+s[1];
-    const rMins=((depTotalMins-120)%1440+1440)%1440;
-    const rH=Math.floor(rMins/60),rM=rMins%60;
-    reportHTML=`<div><div class="lbl">\u23f0 Report time</div><div class="time-tile-val">${pad2(rH)}:${pad2(rM)}</div><div class="time-tile-sub">2h before ${of} dep</div></div>`;
-    // Landing: for same-day use last flight arr, for long haul use outbound arr
+    const rMins=((s[0]*60+s[1])-120+1440)%1440;
+    reportHTML=`<div><div class="lbl">\u23f0 Report time</div><div class="ttval">${pad2(Math.floor(rMins/60))}:${pad2(rMins%60)}</div><div class="ttsub">2h before ${of} dep</div></div>`;
+    // Land time: same-day → use last flight; long haul → use outbound
     const landFlight=isSD&&d.flights&&d.flights.length>1?d.flights[d.flights.length-1]:of;
     const ls=SCHEDULE[landFlight];
     if(ls){
-      const lH=ls[2],lM=ls[3];
-      const lf2=FLIGHTS[landFlight]||{};
-      const ndLabel=lf2.nextDay?' (+1 day)':'';landHTML=`<div><div class="lbl">\u2708\ufe0f ${isSD?'Returns':'Lands'}</div><div class="time-tile-val">${pad2(lH)}:${pad2(lM)} HKT</div><div class="time-tile-sub">${landFlight} \u2192 ${city(lf2.arr||'')}${ndLabel}</div></div>`;
+      const lf=FLIGHTS[landFlight]||{};
+      const ndLabel=lf.nextDay?' (+1 day)':'';
+      landHTML=`<div><div class="lbl">\u2708\ufe0f ${isSD?'Returns':'Lands'}</div><div class="ttval">${pad2(ls[2])}:${pad2(ls[3])} HKT</div><div class="ttsub">${landFlight} \u2192 ${city(lf.arr||'')}${ndLabel}</div></div>`;
     }
   } else if(d.type==='standby'&&d.time){
     const parts=d.time.split('-');
     const sp=parts[0].split(':');
-    const sH=parseInt(sp[0]),sM=parseInt(sp[1]||0);
-    const rMins=((sH*60+sM-60)%1440+1440)%1440;
-    const rH=Math.floor(rMins/60),rM=rMins%60;
-    reportHTML=`<div><div class="lbl">\u23f0 Report time</div><div class="time-tile-val">${pad2(rH)}:${pad2(rM)}</div><div class="time-tile-sub">1h before standby</div></div>`;
+    const rMins=((parseInt(sp[0])*60+parseInt(sp[1]||0))-60+1440)%1440;
+    reportHTML=`<div><div class="lbl">\u23f0 Report time</div><div class="ttval">${pad2(Math.floor(rMins/60))}:${pad2(rMins%60)}</div><div class="ttsub">1h before standby</div></div>`;
     if(parts[1]){
       const ep=parts[1].split(':');
-      landHTML=`<div><div class="lbl">\ud83d\udd14 Released at</div><div class="time-tile-val">${ep[0]}:${ep[1]||'00'}</div><div class="time-tile-sub">Standby ends</div></div>`;
+      landHTML=`<div><div class="lbl">\ud83d\udd14 Released at</div><div class="ttval">${ep[0]}:${ep[1]||'00'}</div><div class="ttsub">Standby ends</div></div>`;
     }
   }
 
   const timeTiles=reportHTML||landHTML?`<div class="time-tiles">${reportHTML}${landHTML}</div>`:'';
-
   document.getElementById('upcoming-area').innerHTML=`<div class="sec">Coming up</div>
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;">
@@ -342,6 +382,26 @@ function renderUpcoming(){
 function renderStatus(s){
   const el=document.getElementById('status-area'),dot=document.getElementById('live-dot');
   if(!s){el.innerHTML='<div class="card"><div class="lbl">No data</div></div>';return;}
+
+  // Pre-work: before report time, don't show API data
+  if(s.type==='pre-work'){
+    dot.style.background='#ccc';
+    const d=s.day,f=d.flights?d.flights[0]:'',r=FLIGHTS[f]||{};
+    const rH=Math.floor(s.reportMins/60),rM=s.reportMins%60;
+    const routeStr=r.dep&&r.arr?`${city(r.dep)} \u2192 ${city(r.arr)}`:'';
+    const msg=view==='nelson'?`She reports at ${pad2(rH)}:${pad2(rM)} — off until then`:`Your report time is ${pad2(rH)}:${pad2(rM)}`;
+    el.innerHTML=`<div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <div class="lbl">Today</div><span class="pill p-off">Not started</span>
+      </div>
+      <div class="val" style="font-size:16px;">${d.type==='fly'?f:(d.label+' Standby')}</div>
+      ${routeStr?`<div style="font-size:13px;color:#555;margin-top:3px;">${routeStr}</div>`:''}
+      ${d.time&&d.type==='standby'?`<div style="font-size:12px;color:#555;margin-top:3px;">${d.time}</div>`:''}
+      <div style="font-size:12px;color:#888;margin-top:6px;">${msg}</div>
+    </div>`;
+    return;
+  }
+
   if(s.type==='off'){dot.style.background='#ccc';el.innerHTML=`<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><div class="lbl">Today</div><span class="pill p-off">Day off</span></div><div class="val" style="font-size:16px;">${s.label||'Day off'}</div><div style="font-size:12px;color:#888;margin-top:4px;">${view==='nelson'?'She is in Taipei \u2014 free today':'You are off today \u2014 rest up'}</div></div>`;return;}
   if(s.type==='layover'){dot.style.background='#EF9F27';const li=LAYOVERS[todayKey()]||{},dc=city(s.label);el.innerHTML=`<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><div class="lbl">Today</div><span class="pill p-lay">Layover</span></div><div class="val" style="font-size:16px;">${dc}</div><div style="font-size:12px;color:#888;margin-top:4px;">${view==='nelson'?`She is on layover in ${dc}`:`Enjoying ${dc} \u2014 layover day`}</div>${li.returnFlight?`<div class="tag-row"><span class="tag">Returns ${li.returnFlight} \u00b7 ${li.returnDate}</span></div>`:''}</div>`;return;}
   if(s.type==='standby'){dot.style.background='#7F77DD';const ph=s.phase,pm=ph==='before'?`Standby starts at ${s.time.split('-')[0]}`:ph==='active'?`On standby \u00b7 released at ${s.time.split('-')[1]}`:'Standby ended \u2014 released',sm=view==='nelson'?(ph==='active'?'She may be called to a flight':ph==='before'?'She is free until standby':'She is free now'):(ph==='active'?'Stay near TPE \u2014 may be called':ph==='before'?'Free until standby starts':'You have been released');el.innerHTML=`<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><div class="lbl">Today</div><span class="pill ${ph==='released'?'p-off':'p-sby'}">${ph==='released'?'Released':'Standby'}</span></div><div class="val" style="font-size:16px;">${s.label} Standby \u00b7 ${s.time}</div><div style="font-size:12px;color:#888;margin-top:4px;">${pm}</div><div style="font-size:11px;color:#aaa;margin-top:2px;">${sm}</div></div>`;return;}
@@ -351,31 +411,7 @@ function renderStatus(s){
     if(st==='landed'){dot.style.background='#4CAF50';el.innerHTML=`<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><div class="lbl">Flight</div><span class="pill p-land">Landed</span></div><div style="font-size:20px;font-weight:500;color:#1a1a1a;">${s.flightNum}</div><div style="font-size:13px;color:#888;margin-top:4px;">${dA} \u2192 ${aA} \u00b7 ${city(dA)} \u2192 ${city(aA)}</div><div style="font-size:12px;color:#aaa;margin-top:4px;">${view==='nelson'?'She has landed. Flight complete.':'You have landed. Welcome back!'}</div><div class="hr"></div><div class="footer-row"><span class="foot-txt">Updated ${fmtHKT(t.toISOString())} HKT</span><button class="rbtn" onclick="loadStatus()">Refresh</button></div></div>`;return;}
     if(st==='scheduled'){dot.style.background='#ccc';const ds=dep.scheduled?new Date(dep.scheduled):null,mu=ds?Math.round((ds-t)/60000):null,cd=mu&&mu>0?`Departs in ${Math.floor(mu/60)}h ${mu%60}m`:'Departing soon';el.innerHTML=`<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><div class="lbl">Flight</div><span class="pill p-sby">Not departed</span></div><div style="font-size:20px;font-weight:500;color:#1a1a1a;">${s.flightNum}</div><div style="font-size:13px;color:#888;margin-top:4px;">${dA} \u2192 ${aA} \u00b7 ${city(dA)} \u2192 ${city(aA)}</div><div style="font-size:13px;font-weight:500;color:#1a1a1a;margin-top:6px;">${cd}</div>${ds?`<div style="font-size:11px;color:#aaa;margin-top:2px;">Scheduled ${fmtHKT(ds.toISOString())} HKT</div>`:''}</div>`;return;}
   }
-  // Pre-flight: before report time, don't show API data
-  if(s.type==='pre-flight'||s.type==='pre-standby'){
-    const d=s.day;
-    const rH=Math.floor(s.reportMins/60),rM=s.reportMins%60;
-    const isPreflight=s.type==='pre-flight';
-    const f=d.flights?d.flights[0]:'';
-    const r=FLIGHTS[f]||{};
-    const routeStr=r.dep&&r.arr?`${city(r.dep)} → ${city(r.arr)}`:'';
-    const msg=view==='nelson'
-      ?`She is off until report time at ${pad2(rH)}:${pad2(rM)}`
-      :`Your report time is ${pad2(rH)}:${pad2(rM)}`;
-    el.innerHTML=`<div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-        <div class="lbl">Today</div>
-        <span class="pill p-off">Not started</span>
-      </div>
-      <div class="val" style="font-size:16px;">${isPreflight?f:(d.label+' Standby')}</div>
-      ${routeStr?`<div style="font-size:13px;color:#555;margin-top:3px;">${routeStr}</div>`:''}
-      ${d.time&&!isPreflight?`<div style="font-size:12px;color:#555;margin-top:3px;">${d.time}</div>`:''}
-      <div style="font-size:12px;color:#888;margin-top:6px;">${msg}</div>
-    </div>`;
-    return;
-  }
-
-  el.innerHTML='<div class="card"><div class="lbl">Today</div><div class="val" style="margin-top:4px;color:#aaa;">Loading flight data...</div></div>';
+  el.innerHTML='<div class="card"><div class="lbl">Today</div><div class="val" style="margin-top:4px;color:#aaa;">Loading...</div></div>';
 }
 
 function buildCal(){
@@ -400,6 +436,22 @@ function buildCal(){
 function render(s){renderStatus(s);renderFlightHours();renderTomorrow();renderStatGrid();renderUpcoming();}
 
 async function loadStatus(){
+  const today=todayKey();
+  const todayDay=ROSTER[today];
+  const now=hktNow();
+  const nowMins=now.getUTCHours()*60+now.getUTCMinutes();
+
+  // Before report time: skip API, show pre-work status from roster
+  if(todayDay&&(todayDay.type==='fly'||todayDay.type==='standby')){
+    const reportMins=getReportMins(todayDay);
+    if(reportMins!==null&&nowMins<reportMins){
+      lastS={type:'pre-work',day:todayDay,reportMins};
+      document.getElementById('live-dot').style.background='#ccc';
+      render(lastS);
+      return;
+    }
+  }
+
   try{
     const r=await fetch(`${BASE}/status`);
     lastS=await r.json();
