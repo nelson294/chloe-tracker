@@ -105,19 +105,19 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; m
 
 <script>
 const CITIES={TPE:'Taipei',LAX:'Los Angeles',DPS:'Bali',NRT:'Tokyo',KIX:'Osaka',CEB:'Cebu',CTS:'Sapporo',SIN:'Singapore',HKG:'Hong Kong',ICN:'Seoul',BKK:'Bangkok'};
-const FLIGHTS={'BR255':{dep:'TPE',arr:'DPS'},'BR256':{dep:'DPS',arr:'TPE'},'BR198':{dep:'TPE',arr:'NRT'},'BR197':{dep:'NRT',arr:'TPE'},'BR132':{dep:'TPE',arr:'KIX'},'BR131':{dep:'KIX',arr:'TPE'},'BR12':{dep:'TPE',arr:'LAX'},'BR11':{dep:'LAX',arr:'TPE'},'BR16':{dep:'TPE',arr:'LAX'},'BR5':{dep:'LAX',arr:'TPE'},'BR281':{dep:'TPE',arr:'CEB'},'BR282':{dep:'CEB',arr:'TPE'},'BR116':{dep:'TPE',arr:'CTS'},'BR115':{dep:'CTS',arr:'TPE'},'BR215':{dep:'TPE',arr:'SIN'},'BR216':{dep:'SIN',arr:'TPE'}};
+const FLIGHTS={'BR255':{dep:'TPE',arr:'DPS'},'BR256':{dep:'DPS',arr:'TPE'},'BR198':{dep:'TPE',arr:'NRT'},'BR197':{dep:'NRT',arr:'TPE'},'BR132':{dep:'TPE',arr:'KIX'},'BR131':{dep:'KIX',arr:'TPE'},'BR12':{dep:'TPE',arr:'LAX',nextDay:true},'BR11':{dep:'LAX',arr:'TPE'},'BR16':{dep:'TPE',arr:'LAX',nextDay:true},'BR5':{dep:'LAX',arr:'TPE'},'BR281':{dep:'TPE',arr:'CEB'},'BR282':{dep:'CEB',arr:'TPE'},'BR116':{dep:'TPE',arr:'CTS'},'BR115':{dep:'CTS',arr:'TPE'},'BR215':{dep:'TPE',arr:'SIN'},'BR216':{dep:'SIN',arr:'TPE'}};
 const LAYOVERS={'2026-06-10':{dest:'LAX',returnFlight:'BR11',returnDate:'Jun 12'},'2026-06-11':{dest:'LAX',returnFlight:'BR11',returnDate:'Jun 12'},'2026-06-17':{dest:'LAX',returnFlight:'BR5',returnDate:'Jun 18-19'}};
 
 // Scheduled times in HKT: [depH, depM, arrH, arrM, durationMins]
 // Durations based on actual historical flight times from Flightradar24
 const SCHEDULE={
   'BR198':[9,0,12,25,205],    // TPE dep 09:00, NRT arr 12:25 HKT, actual avg 3h25m
-  'BR197':[13,25,16,25,180],  // NRT dep 13:25 HKT, TPE arr 16:25, actual avg 3h00m
+  'BR197':[13,25,17,5,220],   // NRT dep 13:25 HKT, TPE arr 17:05, scheduled 3h40m (trip.com actual)
   'BR132':[9,30,11,30,165],   // TPE dep 09:30, KIX arr 11:30 HKT, 2h45m
   'BR131':[13,0,15,30,150],   // KIX dep 13:00 HKT, TPE arr 15:30, 2h30m
-  'BR12':[23,40,19,25,705],   // TPE dep 23:40, LAX arr ~19:25 local, avg 11h45m
+  'BR12':[23,40,10,25,705],   // TPE dep 23:40 HKT, arr 10:25 HKT +1day (19:25 PDT), avg 11h45m
   'BR11':[15,15,4,45,810],    // LAX dep 23:15 = 15:15 HKT, TPE arr 04:45 +1, avg 13h30m
-  'BR16':[23,40,19,10,690],   // TPE dep 23:40, LAX arr ~19:10 local, avg 11h30m
+  'BR16':[23,40,10,10,690],   // TPE dep 23:40 HKT, arr 10:10 HKT +1day (19:10 PDT), avg 11h30m
   'BR5':[0,10,13,54,824],     // LAX dep 08:10 = 00:10 HKT, TPE arr 13:54, avg 13h44m
   'BR281':[8,0,10,0,180],     // TPE dep 08:00, CEB arr 10:00 HKT, 3h00m
   'BR282':[12,30,15,30,120],  // CEB dep 12:30 HKT, TPE arr 15:30, 2h00m (CEB=HKT)
@@ -306,7 +306,8 @@ function renderUpcoming(){
     const ls=SCHEDULE[landFlight];
     if(ls){
       const lH=ls[2],lM=ls[3];
-      landHTML=`<div><div class="lbl">\u2708\ufe0f ${isSD?'Returns':'Lands'}</div><div class="time-tile-val">${pad2(lH)}:${pad2(lM)}</div><div class="time-tile-sub">${landFlight} \u2192 ${city(FLIGHTS[landFlight]?FLIGHTS[landFlight].arr:'')}</div></div>`;
+      const lf2=FLIGHTS[landFlight]||{};
+      const ndLabel=lf2.nextDay?' (+1 day)':'';landHTML=`<div><div class="lbl">\u2708\ufe0f ${isSD?'Returns':'Lands'}</div><div class="time-tile-val">${pad2(lH)}:${pad2(lM)} HKT</div><div class="time-tile-sub">${landFlight} \u2192 ${city(lf2.arr||'')}${ndLabel}</div></div>`;
     }
   } else if(d.type==='standby'&&d.time){
     const parts=d.time.split('-');
