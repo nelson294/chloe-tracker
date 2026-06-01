@@ -3,431 +3,170 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Where is Chloe?</title>
+<title>Find my Chloe</title>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f0; min-height: 100vh; padding: 24px 20px 40px; }
-  .container { width: 100%; max-width: 380px; margin: 0 auto; }
-  .card { background: #fff; border-radius: 16px; padding: 20px; margin-bottom: 12px; border: 1px solid rgba(0,0,0,0.08); }
-  .card.muted { background: #fafaf8; }
-  .label { font-size: 12px; color: #888; margin-bottom: 2px; }
-  .value { font-size: 15px; font-weight: 500; color: #1a1a1a; }
-  .value.big { font-size: 22px; }
-  .badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 20px; margin: 6px 0 10px; }
-  .fly { background: #E6F1FB; color: #0C447C; }
-  .off { background: #f0f0ed; color: #666; }
-  .standby { background: #EEEDFE; color: #3C3489; }
-  .layover { background: #FAEEDA; color: #633806; }
-  .landed { background: #EAF3DE; color: #27500A; }
-  .err { background: #FCEBEB; color: #A32D2D; }
-  .route { display: flex; align-items: center; gap: 10px; margin: 14px 0 8px; }
-  .airport { font-size: 24px; font-weight: 600; color: #1a1a1a; }
-  .line { flex: 1; height: 1px; background: #ddd; position: relative; }
-  .line::after { content: ''; position: absolute; right: -1px; top: -4px; border-left: 7px solid #ddd; border-top: 4px solid transparent; border-bottom: 4px solid transparent; }
-  .dot { width: 12px; height: 12px; border-radius: 50%; background: #378ADD; position: absolute; top: -5px; transition: left 0.3s; }
-  .bar-wrap { background: #f0f0ed; border-radius: 6px; height: 6px; overflow: hidden; margin-bottom: 4px; }
-  .bar { height: 6px; border-radius: 6px; background: #378ADD; }
-  .bar-labels { display: flex; justify-content: space-between; font-size: 11px; color: #888; margin-bottom: 12px; }
-  .metrics { display: flex; gap: 10px; margin-top: 12px; }
-  .metric { flex: 1; background: #f8f8f5; border-radius: 10px; padding: 10px 12px; }
-  .divider { border: none; border-top: 1px solid #f0f0ed; margin: 14px 0; }
-  .footer { font-size: 11px; color: #aaa; display: flex; justify-content: space-between; align-items: center; }
-  .refresh-btn { background: none; border: 1px solid #ddd; border-radius: 8px; padding: 5px 12px; font-size: 12px; color: #555; cursor: pointer; }
-  .refresh-btn:hover { background: #f5f5f0; }
-  .loading { color: #aaa; font-size: 14px; padding: 8px 0; }
-  .section-label { font-size: 11px; font-weight: 600; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; margin: 20px 0 8px; }
-  .view-toggle { display: flex; background: #f0f0ed; border-radius: 10px; padding: 3px; margin-bottom: 20px; }
-  .view-btn { flex: 1; padding: 7px; font-size: 13px; font-weight: 500; border: none; background: none; border-radius: 8px; cursor: pointer; color: #888; }
-  .view-btn.active { background: #fff; color: #1a1a1a; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-  .countdown-big { font-size: 32px; font-weight: 600; color: #1a1a1a; margin: 4px 0; }
-  .next-row { display: flex; justify-content: space-between; align-items: flex-start; margin-top: 10px; }
-  .next-item { flex: 1; }
-  .next-item + .next-item { margin-left: 12px; padding-left: 12px; border-left: 1px solid #f0f0ed; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; }
+.app { min-height: 100vh; padding: 20px 16px 48px; transition: background 0.4s; position: relative; overflow: hidden; }
+.app.nelson-bg { background: #e8f4ff; }
+.app.chloe-bg { background: #fff0f5; }
+.sparkle-wrap { position: absolute; top: 0; left: 0; width: 100%; height: 220px; pointer-events: none; overflow: hidden; }
+.sp { position: absolute; border-radius: 50%; opacity: 0.25; }
+.nelson-bg .sp { background: #378ADD; }
+.chloe-bg .sp { background: #e05585; }
+.card { background: #fff; border-radius: 16px; border: 0.5px solid rgba(0,0,0,0.07); padding: 16px 18px; margin-bottom: 10px; position: relative; z-index: 1; }
+.lbl { font-size: 11px; color: #999; margin-bottom: 2px; }
+.val { font-size: 14px; font-weight: 500; color: #1a1a1a; }
+.pill { display: inline-flex; align-items: center; font-size: 11px; font-weight: 500; padding: 3px 9px; border-radius: 20px; }
+.p-fly { background: #E6F1FB; color: #0C447C; }
+.p-off { background: #f0f0ed; color: #666; }
+.p-sby { background: #EEEDFE; color: #3C3489; }
+.p-lay { background: #FAEEDA; color: #633806; }
+.p-land { background: #EAF3DE; color: #27500A; }
+.route-wrap { display: flex; align-items: center; gap: 8px; margin: 14px 0 6px; }
+.apt-col { text-align: center; }
+.apt-code { font-size: 26px; font-weight: 600; color: #1a1a1a; line-height: 1; }
+.apt-city { font-size: 10px; color: #999; margin-top: 2px; }
+.track { flex: 1; height: 1px; background: #ddd; position: relative; }
+.track::after { content: ''; position: absolute; right: -1px; top: -3px; border-left: 5px solid #ddd; border-top: 3px solid transparent; border-bottom: 3px solid transparent; }
+.plane-dot { width: 10px; height: 10px; border-radius: 50%; background: #378ADD; position: absolute; top: -4px; }
+.prog-bg { background: #f0f0ed; border-radius: 4px; height: 4px; overflow: hidden; margin-bottom: 4px; }
+.prog-fill { height: 4px; border-radius: 4px; background: #378ADD; }
+.prog-row { display: flex; justify-content: space-between; font-size: 10px; color: #999; }
+.eta-line { font-size: 14px; font-weight: 500; color: #1a1a1a; margin-top: 10px; }
+.hr { border: none; border-top: 0.5px solid #f0f0ed; margin: 12px 0; }
+.footer-row { display: flex; justify-content: space-between; align-items: center; }
+.foot-txt { font-size: 10px; color: #bbb; }
+.rbtn { font-size: 11px; padding: 4px 10px; border-radius: 8px; border: 1px solid #e0e0e0; background: none; color: #666; cursor: pointer; }
+.rbtn:hover { background: #f5f5f0; }
+.toggle { display: flex; background: rgba(255,255,255,0.6); border-radius: 14px; padding: 4px; margin-bottom: 18px; position: relative; z-index: 1; border: 0.5px solid rgba(0,0,0,0.06); }
+.tbtn { flex: 1; padding: 9px; font-size: 13px; font-weight: 500; border: none; background: none; border-radius: 11px; cursor: pointer; color: #aaa; transition: all 0.25s; }
+.tbtn.on-nelson { background: linear-gradient(135deg, #cce8ff, #a8d4f8); color: #1a5fa8; box-shadow: 0 2px 8px rgba(56,138,221,0.2); }
+.tbtn.on-chloe { background: linear-gradient(135deg, #ffd6e7, #ffb8d0); color: #b03060; box-shadow: 0 2px 8px rgba(210,80,130,0.2); }
+.sec { font-size: 10px; font-weight: 500; color: #aaa; letter-spacing: 0.6px; text-transform: uppercase; margin: 20px 0 8px; position: relative; z-index: 1; }
+.stat-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; margin-bottom: 10px; position: relative; z-index: 1; }
+.stat-card { background: #fff; border-radius: 14px; padding: 14px; border: 0.5px solid rgba(0,0,0,0.07); }
+.stat-val { font-size: 17px; font-weight: 500; color: #1a1a1a; margin-top: 4px; }
+.stat-sub { font-size: 10px; color: #aaa; margin-top: 2px; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.cal-hdr { text-align: center; font-size: 9px; color: #888; padding: 4px 0 3px; font-weight: 600; }
+.cday { border-radius: 6px; padding: 4px; min-height: 56px; font-size: 9px; border: 1px solid transparent; }
+.cday.empty { background: transparent; }
+.cday.c-fly { background: #c8e2fa; border-color: #85B7EB; }
+.cday.c-off { background: #d8d8d5; border-color: #b8b8b4; }
+.cday.c-sby { background: #d4d0f5; border-color: #AFA9EC; }
+.cday.c-lay { background: #f5dfa8; border-color: #EF9F27; }
+.cday .dn { font-size: 9px; font-weight: 600; color: #444; }
+.cday .dt { font-size: 8px; line-height: 1.3; margin-top: 2px; }
+.c-fly .dn { color: #042C53; } .c-fly .dt { color: #0C447C; }
+.c-sby .dn { color: #26215C; } .c-sby .dt { color: #3C3489; }
+.c-lay .dn { color: #412402; } .c-lay .dt { color: #633806; }
+.c-off .dn { color: #333; } .c-off .dt { color: #555; }
+.legend-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; position: relative; z-index: 1; }
+.leg { display: flex; align-items: center; gap: 4px; font-size: 10px; color: #aaa; }
+.legdot { width: 7px; height: 7px; border-radius: 2px; }
+.tag-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+.tag { font-size: 10px; color: #888; background: #f0f0ed; border-radius: 4px; padding: 2px 6px; }
 </style>
 </head>
 <body>
-<div class="container">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-    <div>
-      <h1 style="font-size:18px;font-weight:600;color:#1a1a1a;" id="page-title">Where is Chloe?</h1>
-      <p style="font-size:13px;color:#888;margin-top:2px;" id="date-label"></p>
-    </div>
-  </div>
+<div class="app nelson-bg" id="app">
+<div class="sparkle-wrap" id="sparkles"></div>
 
-  <div class="view-toggle">
-    <button class="view-btn active" onclick="switchView('nelson')">Nelson</button>
-    <button class="view-btn" onclick="switchView('chloe')">Chloe</button>
+<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;position:relative;z-index:1;">
+  <div>
+    <div style="font-size:20px;font-weight:500;color:#1a1a1a;" id="pg-title">Find my Chloe ✦</div>
+    <div style="font-size:12px;color:#aaa;margin-top:3px;" id="pg-date"></div>
   </div>
+  <div id="live-dot" style="width:7px;height:7px;border-radius:50%;background:#ccc;margin-top:8px;"></div>
+</div>
 
-  <div id="main"></div>
-  <div id="next-section"></div>
-  <div id="countdown-section"></div>
+<div class="toggle">
+  <button class="tbtn on-nelson" onclick="setView('nelson',this)">✦ Nelson</button>
+  <button class="tbtn" onclick="setView('chloe',this)">✦ Chloe</button>
+</div>
+
+<div id="status-area" style="position:relative;z-index:1;"><div class="card"><div class="lbl">Loading...</div></div></div>
+<div id="flight-hours-area"></div>
+<div id="tomorrow-area" style="position:relative;z-index:1;"></div>
+<div id="stat-grid-area"></div>
+<div id="upcoming-area"></div>
+
+<div class="sec">June 2026</div>
+<div class="legend-row">
+  <div class="leg"><div class="legdot" style="background:#c8e2fa;border:1px solid #85B7EB;"></div>Flying</div>
+  <div class="leg"><div class="legdot" style="background:#f5dfa8;border:1px solid #EF9F27;"></div>Layover</div>
+  <div class="leg"><div class="legdot" style="background:#d4d0f5;border:1px solid #AFA9EC;"></div>Standby</div>
+  <div class="leg"><div class="legdot" style="background:#d8d8d5;border:1px solid #b8b8b4;"></div>Off</div>
+</div>
+<div class="card" style="padding:10px 8px;position:relative;z-index:1;">
+  <div class="cal-grid" id="cal"></div>
+</div>
 </div>
 
 <script>
-const BASE = 'https://chloe-tracker.onrender.com';
-let currentView = 'nelson';
+const CITIES={TPE:'Taipei',LAX:'Los Angeles',DPS:'Bali',NRT:'Tokyo',KIX:'Osaka',CEB:'Cebu',CTS:'Sapporo',SIN:'Singapore',HKG:'Hong Kong',ICN:'Seoul',BKK:'Bangkok'};
+const FLIGHTS={'BR255':{dep:'TPE',arr:'DPS'},'BR256':{dep:'DPS',arr:'TPE'},'BR198':{dep:'TPE',arr:'NRT'},'BR197':{dep:'NRT',arr:'TPE'},'BR132':{dep:'TPE',arr:'KIX'},'BR131':{dep:'KIX',arr:'TPE'},'BR12':{dep:'TPE',arr:'LAX'},'BR11':{dep:'LAX',arr:'TPE'},'BR16':{dep:'TPE',arr:'LAX'},'BR5':{dep:'LAX',arr:'TPE'},'BR281':{dep:'TPE',arr:'CEB'},'BR282':{dep:'CEB',arr:'TPE'},'BR116':{dep:'TPE',arr:'CTS'},'BR115':{dep:'CTS',arr:'TPE'},'BR215':{dep:'TPE',arr:'SIN'},'BR216':{dep:'SIN',arr:'TPE'}};
+const LAYOVERS={'2026-06-10':{dest:'LAX',returnFlight:'BR11',returnDate:'Jun 12'},'2026-06-11':{dest:'LAX',returnFlight:'BR11',returnDate:'Jun 12'},'2026-06-17':{dest:'LAX',returnFlight:'BR5',returnDate:'Jun 18-19'}};
 
-const ROSTER = {
-  '2026-05-30': { type: 'fly', flights: ['BR255'], note: 'Departs TPE — overnight stay' },
-  '2026-05-31': { type: 'fly', flights: ['BR256'], note: 'Returns to TPE' },
-  '2026-06-01': { type: 'off', label: 'Day off (YK)' },
-  '2026-06-02': { type: 'fly', flights: ['BR198','BR197'], note: 'Same-day turnaround' },
-  '2026-06-03': { type: 'standby', label: 'LCS Standby', time: '17:00-20:00' },
-  '2026-06-04': { type: 'off', label: 'Day off (ADO)' },
-  '2026-06-05': { type: 'standby', label: 'LCS Standby', time: '17:00-20:00' },
-  '2026-06-06': { type: 'standby', label: 'SCS Standby', time: '14:00-17:00' },
-  '2026-06-07': { type: 'fly', flights: ['BR132','BR131'], note: 'Same-day turnaround' },
-  '2026-06-08': { type: 'off', label: 'Day off (ADO)' },
-  '2026-06-09': { type: 'fly', flights: ['BR12'], note: 'Departs TPE → LAX' },
-  '2026-06-10': { type: 'layover', label: 'LAX layover' },
-  '2026-06-11': { type: 'layover', label: 'LAX layover' },
-  '2026-06-12': { type: 'fly', flights: ['BR11'], note: 'Returns LAX → TPE' },
-  '2026-06-13': { type: 'off', label: 'Day off (ADO)' },
-  '2026-06-14': { type: 'off', label: 'Day off' },
-  '2026-06-15': { type: 'off', label: 'Day off (DO)' },
-  '2026-06-16': { type: 'fly', flights: ['BR16'], note: 'Departs TPE → LAX' },
-  '2026-06-17': { type: 'layover', label: 'LAX layover' },
-  '2026-06-18': { type: 'fly', flights: ['BR5'], note: 'In flight LAX → TPE' },
-  '2026-06-19': { type: 'fly', flights: ['BR5'], note: 'Arrives TPE' },
-  '2026-06-20': { type: 'off', label: 'Day off (ADO)' },
-  '2026-06-21': { type: 'off', label: 'Day off' },
-  '2026-06-22': { type: 'off', label: 'Day off' },
-  '2026-06-23': { type: 'off', label: 'Day off' },
-  '2026-06-24': { type: 'off', label: 'Day off (DO)' },
-  '2026-06-25': { type: 'off', label: 'Day off (DO)' },
-  '2026-06-26': { type: 'standby', label: 'SCS Standby', time: '06:45-09:45', alsoFly: ['BR281','BR282'] },
-  '2026-06-27': { type: 'fly', flights: ['BR281','BR282'], note: 'Same-day turnaround' },
-  '2026-06-28': { type: 'off', label: 'Day off' },
-  '2026-06-29': { type: 'off', label: 'Day off' },
-  '2026-06-30': { type: 'off', label: 'Day off (ADO)' },
+// Scheduled times (HKT = local TPE time for dep from TPE, or local converted for others)
+// Format: [depHH, depMM, arrHH, arrMM, durationMins, arrNextDay]
+const SCHEDULE={
+  'BR198':[9,0,13,25,205,false],   // TPE->NRT dep 09:00 arr 13:25 local (+1hr JST so 12:25 HKT) — store arr as HKT
+  'BR197':[13,25,17,5,220,false],  // NRT->TPE dep 14:25 JST=13:25 HKT arr 17:05 HKT
+  'BR132':[9,30,12,30,165,false],  // TPE->KIX dep 09:30 arr 12:30 local (same tz)
+  'BR131':[13,0,15,30,150,false],  // KIX->TPE dep 14:00 JST=13:00 HKT arr 15:30 HKT
+  'BR12':[23,40,20,0,740,false],   // TPE->LAX dep 23:40 HKT arr 20:00 LAX local (LAX = HKT-15h)
+  'BR11':[15,15,6,0,885,true],     // LAX->TPE dep 23:15 LAX=15:15 HKT arr 06:00 HKT+2days
+  'BR16':[23,40,20,0,740,false],   // TPE->LAX dep 23:40 HKT arr 20:00 LAX local
+  'BR5':[0,10,13,40,810,true],     // LAX->TPE dep 08:10 LAX=00:10 HKT arr 13:40 HKT+1day
+  'BR281':[8,0,11,0,180,false],    // TPE->CEB dep 08:00 arr 11:00 local
+  'BR282':[13,30,15,30,120,false], // CEB->TPE dep 12:30 local=13:30 HKT arr 15:30 HKT
+  'BR116':[10,10,15,0,230,false],  // TPE->CTS dep 10:10 arr 15:00 local (CTS=HKT+1)
+  'BR115':[14,0,19,30,210,false],  // CTS->TPE dep 16:00 local=15:00 HKT arr 19:30 HKT  -- wait, CTS is JST=HKT+1, so dep 16:00 JST = 15:00 HKT... store as HKT
+  'BR215':[9,25,13,55,270,false],  // TPE->SIN dep 09:25 arr 13:55 SIN local (SIN=HKT same tz)
+  'BR216':[15,20,20,0,280,false],  // SIN->TPE dep 15:20 arr 20:00 HKT
 };
 
-function hktNow() {
-  return new Date(Date.now() + 8 * 60 * 60 * 1000);
+// Total confirmed flight hours for June (in minutes)
+// Only scheduled flights, no standby
+const JUNE_FLIGHT_MINS = (function(){
+  const flights=['BR198','BR197','BR132','BR131','BR12','BR11','BR16','BR5','BR5','BR281','BR282','BR116','BR115','BR215','BR216'];
+  return flights.reduce((sum,f)=>sum+(SCHEDULE[f]?SCHEDULE[f][4]:0),0);
+})();
+const ROSTER={'2026-06-01':{type:'off',label:'YK'},'2026-06-02':{type:'fly',flights:['BR198','BR197'],dest:'NRT',sameDay:true},'2026-06-03':{type:'standby',label:'LCS',time:'17:00-20:00'},'2026-06-04':{type:'off',label:'ADO'},'2026-06-05':{type:'standby',label:'LCS',time:'17:00-20:00'},'2026-06-06':{type:'standby',label:'SCS',time:'14:00-17:00'},'2026-06-07':{type:'fly',flights:['BR132','BR131'],dest:'KIX',sameDay:true},'2026-06-08':{type:'off',label:'ADO'},'2026-06-09':{type:'fly',flights:['BR12'],dest:'LAX',returnFlight:'BR11',returnDate:'Jun 12'},'2026-06-10':{type:'layover',label:'LAX'},'2026-06-11':{type:'layover',label:'LAX'},'2026-06-12':{type:'fly',flights:['BR11'],dest:'TPE'},'2026-06-13':{type:'off',label:'ADO'},'2026-06-14':{type:'off',label:'DO'},'2026-06-15':{type:'off',label:'DO'},'2026-06-16':{type:'fly',flights:['BR16'],dest:'LAX',returnFlight:'BR5',returnDate:'Jun 18-19'},'2026-06-17':{type:'layover',label:'LAX'},'2026-06-18':{type:'fly',flights:['BR5'],dest:'TPE'},'2026-06-19':{type:'fly',flights:['BR5'],dest:'TPE'},'2026-06-20':{type:'off',label:'ADO'},'2026-06-21':{type:'off',label:'DO'},'2026-06-22':{type:'fly',flights:['BR116'],dest:'CTS',returnFlight:'BR115',returnDate:'Jun 23'},'2026-06-23':{type:'fly',flights:['BR115'],dest:'TPE'},'2026-06-24':{type:'off',label:'DO'},'2026-06-25':{type:'off',label:'DO'},'2026-06-26':{type:'standby',label:'SCS',time:'06:45-09:45'},'2026-06-27':{type:'fly',flights:['BR281','BR282'],dest:'CEB',sameDay:true},'2026-06-28':{type:'fly',flights:['BR215'],dest:'SIN',returnFlight:'BR216',returnDate:'Jun 29'},'2026-06-29':{type:'fly',flights:['BR216'],dest:'TPE'},'2026-06-30':{type:'off',label:'ADO'}};
+const BASE='https://chloe-tracker.onrender.com';
+let view='nelson',lastS=null;
+
+function buildSparkles(v){const wrap=document.getElementById('sparkles');wrap.innerHTML='';const color=v==='nelson'?'#378ADD':'#e05585';const sizes=[80,50,35,60,25,45,30,70,20,55];const positions=[[10,20],[70,10],[85,60],[20,80],[50,40],[90,15],[35,70],[60,85],[15,50],[75,35]];sizes.forEach((s,i)=>{const d=document.createElement('div');d.className='sp';d.style.cssText=`width:${s}px;height:${s}px;left:${positions[i][0]}%;top:${positions[i][1]}%;background:${color};`;wrap.appendChild(d);});}
+function todayKey(){return new Date(Date.now()+8*3600000).toISOString().slice(0,10);}
+function fmtHKT(iso){return new Date(new Date(iso).getTime()+8*3600000).toISOString().slice(11,16);}
+function friendlyDate(k){return new Date(k+'T12:00:00Z').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});}
+function daysUntil(k){return Math.round((new Date(k+'T00:00:00Z')-new Date(todayKey()+'T00:00:00Z'))/86400000);}
+function city(iata){return CITIES[iata]||iata;}
+function getUpcoming(){const today=todayKey();let nw=null,no=null;for(const k of Object.keys(ROSTER).sort()){if(k<=today)continue;const d=ROSTER[k];if(!nw&&(d.type==='fly'||d.type==='standby'))nw={date:k,day:d};if(!no&&d.type==='off')no={date:k,day:d};if(nw&&no)break;}return{nextWork:nw,nextOff:no};}
+function setView(v,btn){view=v;document.querySelectorAll('.tbtn').forEach(b=>{b.classList.remove('on-nelson','on-chloe');});btn.classList.add(v==='nelson'?'on-nelson':'on-chloe');const app=document.getElementById('app');app.classList.remove('nelson-bg','chloe-bg');app.classList.add(v==='nelson'?'nelson-bg':'chloe-bg');document.getElementById('pg-title').textContent=v==='nelson'?'Find my Chloe \u2726':'My schedule \u2726';buildSparkles(v);render(lastS);}
+function renderStatGrid(){const{nextWork:nw,nextOff:no}=getUpcoming();if(!nw&&!no){document.getElementById('stat-grid-area').innerHTML='';return;}let h='<div class="stat-grid">';if(nw){const d=nw.day,days=daysUntil(nw.date),dL=days===1?'Tomorrow':`${days} days`,dc=d.dest?city(d.dest):'',of=d.flights?d.flights[0]:'';h+=`<div class="stat-card"><div class="lbl">Next working day</div><div class="stat-val">${dL}</div><div class="stat-sub">${friendlyDate(nw.date)}</div>${dc?`<div style="font-size:11px;color:#555;margin-top:5px;font-weight:500;">${of} \u2192 ${dc}</div>`:''}</div>`;}if(no){const days=daysUntil(no.date);h+=`<div class="stat-card"><div class="lbl">Next day off</div><div class="stat-val">${days===1?'Tomorrow':`${days} days`}</div><div class="stat-sub">${friendlyDate(no.date)}</div><div style="font-size:11px;color:#555;margin-top:5px;font-weight:500;">Free day</div></div>`;}h+='</div>';document.getElementById('stat-grid-area').innerHTML=h;}
+function renderUpcoming(){const{nextWork:nw}=getUpcoming();if(!nw){document.getElementById('upcoming-area').innerHTML='';return;}const d=nw.day,days=daysUntil(nw.date),dL=days===1?'Tomorrow':`In ${days} days`,of=d.flights?d.flights[0]:'',or=FLIGHTS[of]||{},depC=or.dep?city(or.dep):'',arrC=or.arr?city(or.arr):'',rl=depC&&arrC?`${depC} \u2192 ${arrC}`:'',isLH=d.returnFlight&&!d.sameDay,isSD=d.sameDay;let det='';if(isLH)det=`<div class="tag-row"><span class="tag">${of} outbound</span><span class="tag">Returns ${d.returnFlight} \u00b7 ${d.returnDate}</span></div>`;else if(isSD&&d.flights&&d.flights.length>1)det=`<div class="tag-row"><span class="tag">${d.flights[0]} out \u00b7 ${d.flights[1]} back</span><span class="tag">Same-day</span></div>`;if(d.time)det+=`<div style="font-size:11px;color:#aaa;margin-top:6px;">${d.time}</div>`;document.getElementById('upcoming-area').innerHTML=`<div class="sec">Coming up</div><div class="card"><div style="display:flex;justify-content:space-between;align-items:flex-start;"><div style="flex:1;"><div class="lbl">${dL} \u00b7 ${friendlyDate(nw.date)}</div><div style="font-size:16px;font-weight:500;color:#1a1a1a;margin-top:5px;">${d.flights?d.flights[0]:d.label}</div>${rl?`<div style="font-size:13px;color:#555;margin-top:3px;">${rl}</div>`:''} ${det}</div><span class="pill ${d.type==='standby'?'p-sby':'p-fly'}" style="margin-top:2px;margin-left:10px;">${d.type==='standby'?'Standby':'Flying'}</span></div></div>`;}
+function renderStatus(s){const el=document.getElementById('status-area'),dot=document.getElementById('live-dot');if(!s){el.innerHTML='<div class="card"><div class="lbl">No data</div></div>';return;}if(s.type==='off'){dot.style.background='#ccc';el.innerHTML=`<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><div class="lbl">Today</div><span class="pill p-off">Day off</span></div><div class="val" style="font-size:16px;">${s.label||'Day off'}</div><div style="font-size:12px;color:#888;margin-top:4px;">${view==='nelson'?'She is in Taipei \u2014 free today':'You are off today \u2014 rest up'}</div></div>`;return;}if(s.type==='layover'){dot.style.background='#EF9F27';const li=LAYOVERS[todayKey()]||{},dc=city(s.label);el.innerHTML=`<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><div class="lbl">Today</div><span class="pill p-lay">Layover</span></div><div class="val" style="font-size:16px;">${dc}</div><div style="font-size:12px;color:#888;margin-top:4px;">${view==='nelson'?`She is on layover in ${dc}`:`Enjoying ${dc} \u2014 layover day`}</div>${li.returnFlight?`<div class="tag-row"><span class="tag">Returns ${li.returnFlight} \u00b7 ${li.returnDate}</span></div>`:''}</div>`;return;}if(s.type==='standby'){dot.style.background='#7F77DD';const ph=s.phase,pm=ph==='before'?`Standby starts at ${s.time.split('-')[0]}`:ph==='active'?`On standby \u00b7 released at ${s.time.split('-')[1]}`:'Standby ended \u2014 released',sm=view==='nelson'?(ph==='active'?'She may be called to a flight':ph==='before'?'She is free until standby':'She is free now'):(ph==='active'?'Stay near TPE \u2014 may be called':ph==='before'?'Free until standby starts':'You have been released');el.innerHTML=`<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><div class="lbl">Today</div><span class="pill ${ph==='released'?'p-off':'p-sby'}">${ph==='released'?'Released':'Standby'}</span></div><div class="val" style="font-size:16px;">${s.label} Standby \u00b7 ${s.time}</div><div style="font-size:12px;color:#888;margin-top:4px;">${pm}</div><div style="font-size:11px;color:#aaa;margin-top:2px;">${sm}</div></div>`;return;}if(s.type==='fly'&&s.autoSelected&&s.flightData){const f=s.flightData,st=f.flight_status,dep=f.departure||{},arr=f.arrival||{},dA=dep.iata||'?',aA=arr.iata||'?',t=new Date();if(st==='active'){dot.style.background='#378ADD';const pct=f.percent||0,em=f.etaMins||null;let el2='',eta='';if(dep.actual){const ms=Math.round((t-new Date(dep.actual))/60000);el2=`${Math.floor(ms/60)}h ${ms%60}m airborne`;}if(em&&em>0){const lh=new Date(Date.now()+em*60000+8*3600000);eta=`${Math.floor(em/60)}h ${em%60}m to landing \u00b7 ~${lh.toISOString().slice(11,16)} HKT`;}el.innerHTML=`<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;"><div><div class="lbl">Flight</div><div style="font-size:22px;font-weight:500;color:#1a1a1a;margin-top:2px;">${s.flightNum}</div></div><span class="pill p-fly">In the air</span></div><div style="font-size:11px;color:#aaa;margin-bottom:2px;">EVA Air${f.aircraft?' \u00b7 '+f.aircraft.iata:''}</div><div class="route-wrap"><div class="apt-col"><div class="apt-code">${dA}</div><div class="apt-city">${city(dA)}</div></div><div class="track"><div class="plane-dot" style="left:calc(${pct}% - 5px)"></div></div><div class="apt-col"><div class="apt-code">${aA}</div><div class="apt-city">${city(aA)}</div></div></div><div class="prog-bg"><div class="prog-fill" style="width:${pct}%"></div></div><div class="prog-row"><span>${el2}</span><span>${pct}% complete</span></div>${eta?`<div class="eta-line">${eta}</div>`:''}<div class="hr"></div><div class="footer-row"><span class="foot-txt">Updated ${fmtHKT(t.toISOString())} HKT</span><button class="rbtn" onclick="loadStatus()">Refresh</button></div></div>`;return;}if(st==='landed'){dot.style.background='#4CAF50';el.innerHTML=`<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><div class="lbl">Flight</div><span class="pill p-land">Landed</span></div><div style="font-size:20px;font-weight:500;color:#1a1a1a;">${s.flightNum}</div><div style="font-size:13px;color:#888;margin-top:4px;">${dA} \u2192 ${aA} \u00b7 ${city(dA)} \u2192 ${city(aA)}</div><div style="font-size:12px;color:#aaa;margin-top:4px;">${view==='nelson'?'She has landed. Flight complete.':'You have landed. Welcome back!'}</div><div class="hr"></div><div class="footer-row"><span class="foot-txt">Updated ${fmtHKT(t.toISOString())} HKT</span><button class="rbtn" onclick="loadStatus()">Refresh</button></div></div>`;return;}if(st==='scheduled'){dot.style.background='#ccc';const ds=dep.scheduled?new Date(dep.scheduled):null,mu=ds?Math.round((ds-t)/60000):null,cd=mu&&mu>0?`Departs in ${Math.floor(mu/60)}h ${mu%60}m`:'Departing soon';el.innerHTML=`<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><div class="lbl">Flight</div><span class="pill p-sby">Not departed</span></div><div style="font-size:20px;font-weight:500;color:#1a1a1a;">${s.flightNum}</div><div style="font-size:13px;color:#888;margin-top:4px;">${dA} \u2192 ${aA} \u00b7 ${city(dA)} \u2192 ${city(aA)}</div><div style="font-size:13px;font-weight:500;color:#1a1a1a;margin-top:6px;">${cd}</div>${ds?`<div style="font-size:11px;color:#aaa;margin-top:2px;">Scheduled ${fmtHKT(ds.toISOString())} HKT</div>`:''}</div>`;return;}}el.innerHTML='<div class="card"><div class="lbl">Today</div><div class="val" style="margin-top:4px;color:#aaa;">Loading flight data...</div></div>';}
+function buildCal(){const days=['S','M','T','W','T','F','S'];let h=days.map(d=>`<div class="cal-hdr">${d}</div>`).join('');const fd=new Date('2026-06-01').getDay();for(let i=0;i<fd;i++)h+=`<div class="cday empty"></div>`;for(let d=1;d<=30;d++){const k=`2026-06-${String(d).padStart(2,'0')}`,day=ROSTER[k];let cls='cday',txt='';if(day){if(day.type==='fly'){cls+=' c-fly';const dc=day.dest?city(day.dest):'';if(day.sameDay&&day.flights&&day.flights.length>1){txt=`${day.flights[0]}<br>${day.flights[1]}<br>${dc}`;}else{txt=(day.flights?day.flights[0]:'')+(dc?`<br>${dc}`:'');if(day.returnFlight)txt+=`<br>\u21a9${day.returnFlight}`;}}else if(day.type==='layover'){cls+=' c-lay';txt=day.label?city(day.label):'';}else if(day.type==='standby'){cls+=' c-sby';txt=(day.label||'SBY')+(day.time?`<br>${day.time.split('-')[0]}`:'');}else{cls+=' c-off';txt=day.label||'';}}else{cls+=' c-off';}h+=`<div class="${cls}"><div class="dn">${d}</div><div class="dt">${txt}</div></div>`;}document.getElementById('cal').innerHTML=h;}
+function renderFlightHours(){
+  const el=document.getElementById('flight-hours-area');
+  if(view!=='chloe'){el.innerHTML='';return;}
+  const totalMins=JUNE_FLIGHT_MINS;
+  const h=Math.floor(totalMins/60),m=totalMins%60;
+  el.innerHTML=`<div style="background:linear-gradient(135deg,#ffd6e7,#ffb8d0);border-radius:16px;padding:16px 18px;margin-bottom:10px;position:relative;z-index:1;">
+    <div style="font-size:11px;color:rgba(0,0,0,0.4);margin-bottom:2px;">Total flight hours this month</div>
+    <div style="font-size:28px;font-weight:600;color:#7a1a3a;">${h}h ${m}m</div>
+    <div style="font-size:11px;color:rgba(0,0,0,0.35);margin-top:3px;">Confirmed scheduled flights only</div>
+  </div>`;
 }
-
-function todayKey() {
-  const h = hktNow();
-  return h.toISOString().slice(0, 10);
-}
-
-function fmt(isoStr) {
-  if (!isoStr) return '—';
-  const hkt = new Date(new Date(isoStr).getTime() + 8 * 60 * 60 * 1000);
-  return hkt.toISOString().slice(11, 16);
-}
-
-function switchView(v) {
-  currentView = v;
-  document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
-  document.querySelector(`.view-btn[onclick="switchView('${v}')"]`).classList.add('active');
-  document.getElementById('page-title').textContent = v === 'nelson' ? 'Where is Chloe?' : 'My Schedule';
-  load();
-}
-
-// Find next working day and next day off from today
-function getUpcoming() {
-  const today = todayKey();
-  const keys = Object.keys(ROSTER).sort();
-  let nextWork = null, nextOff = null;
-
-  for (const k of keys) {
-    if (k <= today) continue;
-    const d = ROSTER[k];
-    if (!nextWork && (d.type === 'fly' || d.type === 'standby')) nextWork = { date: k, day: d };
-    if (!nextOff && d.type === 'off') nextOff = { date: k, day: d };
-    if (nextWork && nextOff) break;
-  }
-  return { nextWork, nextOff };
-}
-
-function daysUntil(dateStr) {
-  const today = todayKey();
-  const t = new Date(today), d = new Date(dateStr);
-  return Math.round((d - t) / 86400000);
-}
-
-function friendlyDate(dateStr) {
-  const d = new Date(dateStr + 'T00:00:00+08:00');
-  return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
-}
-
-function renderNextSection() {
-  const { nextWork, nextOff } = getUpcoming();
-  const todayDay = ROSTER[todayKey()];
-  const isOffToday = todayDay && todayDay.type === 'off';
-
-  let html = '<p class="section-label">Coming up</p>';
-
-  if (nextWork) {
-    const days = daysUntil(nextWork.date);
-    const d = nextWork.day;
-    const flightStr = d.flights ? d.flights.join(' / ') : d.label;
-    const daysLabel = days === 1 ? 'Tomorrow' : `In ${days} days`;
-    html += `<div class="card">
-      <p class="label">${daysLabel} · ${friendlyDate(nextWork.date)}</p>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
-        <p class="value">${flightStr}</p>
-        <span class="badge ${d.type === 'standby' ? 'standby' : 'fly'}">${d.type === 'standby' ? 'Standby' : 'Flying'}</span>
-      </div>
-      ${d.note ? `<p class="label" style="margin-top:4px;">${d.note}</p>` : ''}
-      ${d.time ? `<p class="label" style="margin-top:4px;">${d.time}</p>` : ''}
-    </div>`;
-  }
-
-  if (nextOff) {
-    const days = daysUntil(nextOff.date);
-    const daysLabel = days === 1 ? 'Tomorrow' : `In ${days} days`;
-    html += `<div class="card muted">
-      <p class="label">Next day off · ${friendlyDate(nextOff.date)}</p>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
-        <p class="value">${daysLabel}</p>
-        <span class="badge off">Free</span>
-      </div>
-    </div>`;
-  }
-
-  document.getElementById('next-section').innerHTML = html;
-}
-
-function renderCountdown() {
-  const { nextOff } = getUpcoming();
-  if (!nextOff) { document.getElementById('countdown-section').innerHTML = ''; return; }
-
-  const days = daysUntil(nextOff.date);
-  const todayDay = ROSTER[todayKey()];
-  const isOffToday = todayDay && todayDay.type === 'off';
-
-  if (isOffToday) { document.getElementById('countdown-section').innerHTML = ''; return; }
-
-  document.getElementById('countdown-section').innerHTML = `
-    <p class="section-label">Countdown to next day off</p>
-    <div class="card" style="text-align:center;padding:24px 20px;">
-      <p class="label">Days until she's free</p>
-      <p class="countdown-big">${days}</p>
-      <p class="label">${friendlyDate(nextOff.date)}</p>
-    </div>`;
-}
-
-function renderFlight(flightNum, f) {
-  const dep = f.departure || {}, arr = f.arrival || {}, live = f.live || {};
-  const status = f.flight_status || 'unknown';
-  const depA = dep.iata || '?', arrA = arr.iata || '?';
-  const depActual = dep.actual ? new Date(dep.actual) : null;
-  const depSched = dep.scheduled ? new Date(dep.scheduled) : null;
-  const arrSched = arr.scheduled ? new Date(arr.scheduled) : null;
-  const arrEst = arr.estimated ? new Date(arr.estimated) : null;
-  const t = new Date();
-
-  if (status === 'active') {
-    const pct = f.percent || 0;
-    const etaMins = f.etaMins || null;
-    let elapsed = '', eta = '';
-
-    if (depActual) {
-      const elMs = t - depActual;
-      const elMins = Math.round(elMs / 60000);
-      elapsed = `${Math.floor(elMins/60)}h ${elMins%60}m airborne`;
-    }
-
-    if (etaMins && etaMins > 0) {
-      const landTime = new Date(Date.now() + etaMins * 60 * 1000);
-      const hkt = new Date(landTime.getTime() + 8 * 60 * 60 * 1000);
-      const hktStr = hkt.toISOString().slice(11, 16);
-      eta = `${Math.floor(etaMins/60)}h ${etaMins%60}m to landing · lands ~${hktStr}`;
-    } else if (arrEst) {
-      eta = `Lands ~${fmt(arrEst.toISOString())}`;
-    }
-
-    const alt = live.altitude ? Math.round(live.altitude).toLocaleString() + ' ft' : null;
-    const spd = live.speed_horizontal ? Math.round(live.speed_horizontal) + ' km/h' : null;
-    const aircraft = f.aircraft ? f.aircraft.iata || '' : '';
-
-    return `<div class="card">
-      <p class="label">Flight</p>
-      <div style="display:flex;justify-content:space-between;align-items:center;">
-        <span class="value big">${flightNum}</span>
-        <span class="badge fly">In the air</span>
-      </div>
-      ${aircraft ? `<p class="label" style="margin-top:2px;">EVA Air · ${aircraft}</p>` : ''}
-      <div class="route">
-        <span class="airport">${depA}</span>
-        <div class="line"><div class="dot" style="left:calc(${pct}% - 6px)"></div></div>
-        <span class="airport">${arrA}</span>
-      </div>
-      <div class="bar-wrap"><div class="bar" style="width:${pct}%"></div></div>
-      <div class="bar-labels"><span>${elapsed}</span><span>${pct}% complete</span></div>
-      <p class="value" style="font-size:14px;">${eta}</p>
-      ${alt || spd ? `<div class="metrics">
-        ${alt ? `<div class="metric"><p class="label">Altitude</p><p class="value">${alt}</p></div>` : ''}
-        ${spd ? `<div class="metric"><p class="label">Speed</p><p class="value">${spd}</p></div>` : ''}
-      </div>` : ''}
-      <hr class="divider">
-      <div class="footer"><span>Updated ${fmt(t.toISOString())}</span><button class="refresh-btn" onclick="load()">Refresh</button></div>
-    </div>`;
-  }
-
-  if (status === 'landed') {
-    return `<div class="card">
-      <span class="badge landed">Landed</span>
-      <p class="value">${depA} → ${arrA}</p>
-      <p class="label" style="margin-top:6px;">She has landed${arr.actual ? ' at ' + fmt(arr.actual) : ''}. Flight complete.</p>
-      <hr class="divider">
-      <div class="footer"><span>Updated ${fmt(t.toISOString())}</span><button class="refresh-btn" onclick="load()">Refresh</button></div>
-    </div>`;
-  }
-
-  if (status === 'scheduled') {
-    const depTime = depSched ? fmt(depSched.toISOString()) : '—';
-    const minsUntil = depSched ? Math.round((depSched - t) / 60000) : null;
-    const countdown = minsUntil && minsUntil > 0 ? ` · departs in ${Math.floor(minsUntil/60)}h ${minsUntil%60}m` : '';
-    return `<div class="card">
-      <span class="badge standby">Not yet departed</span>
-      <p class="value">${flightNum} · ${depA} → ${arrA}</p>
-      <p class="label" style="margin-top:6px;">Scheduled: ${depTime}${countdown}</p>
-      <hr class="divider">
-      <div class="footer"><span>Updated ${fmt(t.toISOString())}</span><button class="refresh-btn" onclick="load()">Refresh</button></div>
-    </div>`;
-  }
-
-  if (status === 'cancelled') {
-    return `<div class="card"><span class="badge err">Cancelled</span><p class="value" style="margin-top:8px;">${flightNum} has been cancelled.</p></div>`;
-  }
-
-  return `<div class="card"><span class="badge off">${status}</span><p class="value" style="margin-top:8px;">${depA} → ${arrA}</p></div>`;
-}
-
-function renderChloeView(s) {
-  const main = document.getElementById('main');
-  const t = new Date();
-  const todayKey2 = todayKey();
-  const day = ROSTER[todayKey2];
-
-  let statusCard = '';
-  if (s.type === 'off') {
-    statusCard = `<div class="card">
-      <span class="badge off">Day off</span>
-      <p class="value" style="margin-top:4px;">${s.label}</p>
-      <p class="label" style="margin-top:6px;">Rest up — you're free today</p>
-    </div>`;
-  } else if (s.type === 'layover') {
-    statusCard = `<div class="card">
-      <span class="badge layover">On layover</span>
-      <p class="value" style="margin-top:4px;">${s.label}</p>
-      <p class="label" style="margin-top:6px;">Enjoy your time away</p>
-    </div>`;
-  } else if (s.type === 'standby') {
-    const phaseMsg = s.phase === 'before' ? `Standby starts at ${s.time.split('-')[0]}`
-      : s.phase === 'active' ? `You are on standby until ${s.time.split('-')[1]}`
-      : `Standby ended — you have been released`;
-    statusCard = `<div class="card">
-      <span class="badge ${s.phase === 'released' ? 'off' : 'standby'}">${s.phase === 'released' ? 'Released' : 'On standby'}</span>
-      <p class="value" style="margin-top:4px;">${s.label} · ${s.time}</p>
-      <p class="label" style="margin-top:6px;">${phaseMsg}</p>
-    </div>`;
-  } else if (s.type === 'fly' && s.autoSelected && s.flightData) {
-    statusCard = renderFlight(s.flightNum, s.flightData);
-  } else if (s.type === 'fly') {
-    statusCard = `<div class="card">
-      <span class="badge fly">Flight day</span>
-      <p class="value" style="margin-top:4px;">${day && day.flights ? day.flights.join(' / ') : ''}</p>
-      <p class="label" style="margin-top:6px;">${day && day.note ? day.note : ''}</p>
-    </div>`;
-  }
-
-  main.innerHTML = statusCard;
-}
-
-async function load() {
-  document.getElementById('date-label').textContent = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
-  const main = document.getElementById('main');
-  main.innerHTML = `<div class="card"><p class="loading">Checking status...</p></div>`;
-  document.getElementById('next-section').innerHTML = '';
-  document.getElementById('countdown-section').innerHTML = '';
-
-  try {
-    const resp = await fetch(`${BASE}/status`);
-    const s = await resp.json();
-    const t = new Date();
-
-    if (currentView === 'chloe') {
-      renderChloeView(s);
-      renderNextSection();
-      return;
-    }
-
-    // Nelson view
-    if (s.type === 'off') {
-      main.innerHTML = `<div class="card">
-        <span class="badge off">Day off</span>
-        <p class="value" style="margin-top:4px;">${s.label}</p>
-        <p class="label" style="margin-top:6px;">She is in Taipei and free today</p>
-        <hr class="divider">
-        <div class="footer"><span>Updated ${fmt(t.toISOString())}</span><button class="refresh-btn" onclick="load()">Refresh</button></div>
-      </div>`;
-    } else if (s.type === 'layover') {
-      main.innerHTML = `<div class="card">
-        <span class="badge layover">On layover</span>
-        <p class="value" style="margin-top:4px;">${s.label}</p>
-        <p class="label" style="margin-top:6px;">She is resting at her layover city</p>
-        <hr class="divider">
-        <div class="footer"><span>Updated ${fmt(t.toISOString())}</span><button class="refresh-btn" onclick="load()">Refresh</button></div>
-      </div>`;
-    } else if (s.type === 'standby') {
-      const phaseMsg = s.phase === 'before' ? `Standby starts at ${s.time.split('-')[0]}`
-        : s.phase === 'active' ? `On standby now · released at ${s.time.split('-')[1]}`
-        : `Standby ended — she has been released`;
-      main.innerHTML = `<div class="card">
-        <span class="badge ${s.phase === 'released' ? 'off' : 'standby'}">${s.phase === 'released' ? 'Released' : 'On standby'}</span>
-        <p class="value" style="margin-top:4px;">${s.label} · ${s.time}</p>
-        <p class="label" style="margin-top:6px;">${phaseMsg}</p>
-        <hr class="divider">
-        <div class="footer"><span>Updated ${fmt(t.toISOString())}</span><button class="refresh-btn" onclick="load()">Refresh</button></div>
-      </div>`;
-    } else if (s.type === 'fly') {
-      if (s.autoSelected && s.flightData) {
-        main.innerHTML = renderFlight(s.flightNum, s.flightData);
-      } else if (s.flights) {
-        main.innerHTML = `<div class="card">
-          <span class="badge fly">Flight day</span>
-          <p class="value" style="margin-top:8px;">Tap to check:</p>
-          ${s.flights.map(f => `<button class="refresh-btn" style="width:100%;margin-top:8px;padding:10px;" onclick="checkFlight('${f}')">${f}</button>`).join('')}
-        </div>`;
-      }
-    } else {
-      main.innerHTML = `<div class="card"><p class="value">No schedule data for today</p></div>`;
-    }
-
-    renderNextSection();
-    renderCountdown();
-
-  } catch(e) {
-    main.innerHTML = `<div class="card">
-      <span class="badge err">Connection error</span>
-      <p class="value" style="margin-top:8px;font-size:13px;">Server may be waking up. Wait 30 seconds and retry.</p>
-      <button class="refresh-btn" style="margin-top:12px;width:100%;padding:10px;" onclick="load()">Retry</button>
-    </div>`;
-  }
-}
-
-async function checkFlight(num) {
-  const main = document.getElementById('main');
-  main.innerHTML = `<div class="card"><p class="loading">Fetching ${num}...</p></div>`;
-  try {
-    const resp = await fetch(`${BASE}/flight?num=${num}`);
-    const data = await resp.json();
-    if (!data.data || !data.data[0]) {
-      main.innerHTML = `<div class="card"><span class="badge err">No data</span><p class="value" style="margin-top:8px;">No live data for ${num}</p><button class="refresh-btn" style="margin-top:12px;" onclick="load()">Back</button></div>`;
-      return;
-    }
-    main.innerHTML = renderFlight(num, data.data[0]);
-  } catch(e) {
-    main.innerHTML = `<div class="card"><span class="badge err">Error</span><p class="value" style="margin-top:8px;font-size:13px;">${e.message}</p></div>`;
-  }
-}
-
-load();
+function render(s){renderStatus(s);renderFlightHours();renderTomorrow();renderStatGrid();renderUpcoming();}
+async function loadStatus(){try{const r=await fetch(`${BASE}/status`);lastS=await r.json();document.getElementById('live-dot').style.background='#4CAF50';render(lastS);}catch(e){document.getElementById('live-dot').style.background='#E24B4A';document.getElementById('status-area').innerHTML=`<div class="card"><div style="font-size:13px;color:#888;">Server waking up \u2014 wait 30s</div><button class="rbtn" style="margin-top:10px;" onclick="loadStatus()">Retry</button></div>`;}}
+document.getElementById('pg-date').textContent=new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
+buildSparkles('nelson');
+buildCal();
+loadStatus();
 </script>
 </body>
 </html>
